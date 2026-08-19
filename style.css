@@ -409,16 +409,178 @@ a { color: var(--accent); }
 .tag-add:disabled { opacity: 0.5; cursor: default; }
 
 .edit-wrap { max-width: 760px; margin: 0 auto; padding: 0 28px 72px; }
-.setup-card {
+
+/* --- 编辑页抬头 --- */
+.editor-hero { text-align: center; padding: 46px 0 26px; }
+.editor-hero .ed-date {
+  display: inline-block;
+  font-size: 13px;
+  color: var(--accent);
+  letter-spacing: 2px;
+  border: 1px solid rgba(184, 64, 46, 0.35);
+  border-radius: 999px;
+  padding: 4px 16px;
+  background: var(--accent-soft);
+}
+.editor-hero h1 { font-size: 30px; margin: 16px 0 8px; }
+.editor-hero p { font-size: 14px; color: var(--muted); }
+
+/* --- 稿纸写作台 --- */
+.paper {
+  position: relative;
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 30px 30px 34px;
+  border-radius: 18px;
+  padding: 38px 38px 32px;
+  box-shadow: 0 24px 48px -28px rgba(60, 42, 20, 0.28);
+}
+.paper-seal {
+  position: absolute;
+  top: -14px;
+  left: 34px;
+  width: 34px;
+  height: 34px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 34px;
+  border-radius: 9px;
+  box-shadow: 0 4px 10px -3px rgba(147, 41, 26, 0.5);
+}
+
+.field-title input {
+  font-size: 24px !important;
+  font-weight: 700;
+  color: var(--ink);
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid var(--line) !important;
+  border-radius: 0 !important;
+  padding: 4px 2px 12px !important;
+}
+.field-title input:focus { border-bottom-color: var(--accent) !important; box-shadow: none !important; }
+.field-title input::placeholder { color: var(--dim); font-weight: 400; }
+
+.field-sub input {
+  font-size: 15px !important;
+  color: var(--muted) !important;
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px dashed var(--line) !important;
+  border-radius: 0 !important;
+  padding: 10px 2px 10px !important;
+}
+.field-sub input:focus { border-bottom-color: var(--accent) !important; box-shadow: none !important; }
+.field-sub input::placeholder { color: var(--dim); }
+
+/* 稿纸横线：每 32px 一条，行高 32px 正好坐在线上 */
+.field-body textarea.paper-lines {
+  background-color: transparent;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0px, transparent 31px,
+    rgba(87, 70, 48, 0.13) 31px, rgba(87, 70, 48, 0.13) 32px
+  );
+  background-attachment: local;
+  background-origin: padding-box;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 2px !important;
+  font-size: 16px;
+  line-height: 32px;
+  caret-color: var(--accent);
+}
+.field-body textarea.paper-lines:focus { border: none !important; box-shadow: none !important; }
+
+.ed-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+  color: var(--dim);
+  margin-top: 10px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 14px;
+}
+
+/* --- 标签区 --- */
+.tag-section {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px 18px 16px;
+  margin-top: 26px;
+}
+.tag-section .new-tag-input { margin-top: 12px; }
+
+.ed-actions { display: flex; align-items: center; gap: 16px; margin-top: 26px; }
+.btn-publish-lg { padding: 13px 42px !important; font-size: 16px; box-shadow: 0 10px 22px -12px rgba(147, 41, 26, 0.55); }
+.draft-hint { font-size: 12.5px; color: var(--dim); }
+
+.ed-done { color: var(--accent); background: var(--accent-soft); border-radius: 12px; padding: 14px 18px; }
+
+/* --- 令牌配置卡 --- */
+.setup-card {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 34px 32px 34px;
   margin-top: 28px;
+  box-shadow: 0 24px 48px -28px rgba(60, 42, 20, 0.28);
+}
+.setup-seal {
+  position: absolute;
+  top: -14px;
+  left: 34px;
+  width: 34px;
+  height: 34px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 17px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 34px;
+  border-radius: 9px;
+  box-shadow: 0 4px 10px -3px rgba(43, 38, 32, 0.4);
 }
 .setup-card h2 { font-size: 19px; color: var(--ink); margin-bottom: 10px; }
 .setup-tip { font-size: 14px; color: var(--muted); line-height: 1.8; }
-.setup-card ol { padding-left: 20px; font-size: 14.5px; color: #4a4338; line-height: 2; margin: 14px 0 22px; }
+.setup-tip a { color: var(--accent); font-weight: 600; }
+.setup-card ol {
+  list-style: none;
+  counter-reset: step;
+  padding-left: 0;
+  font-size: 14.5px;
+  color: #4a4338;
+  line-height: 1.9;
+  margin: 16px 0 24px;
+}
+.setup-card ol li {
+  counter-increment: step;
+  position: relative;
+  padding-left: 34px;
+  margin-bottom: 6px;
+}
+.setup-card ol li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: 22px;
+  height: 22px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid rgba(184, 64, 46, 0.4);
+  border-radius: 50%;
+  text-align: center;
+  line-height: 22px;
+  box-sizing: border-box;
+}
 .setup-card code { background: var(--bg); padding: 1px 7px; border-radius: 5px; font-size: 13px; }
 
 .field { margin-bottom: 24px; }
@@ -491,5 +653,9 @@ a { color: var(--accent); }
   .cards { grid-template-columns: 1fr; padding-bottom: 56px; }
   .profile { flex-direction: column; text-align: center; }
   .edit-wrap { padding-left: 18px; padding-right: 18px; }
-  .setup-card { padding: 22px 20px 26px; }
+  .setup-card { padding: 26px 20px 26px; }
+  .paper { padding: 28px 20px 24px; }
+  .paper-seal { left: 20px; }
+  .editor-hero h1 { font-size: 25px; }
+  .ed-actions { flex-direction: column; align-items: stretch; text-align: center; }
 }
