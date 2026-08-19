@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>写日记 · 就像戒不掉你</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="index.html">
+      <span class="brand-mark"><img src="logo.jpg" alt="就像戒不掉你"></span>
+      <span class="brand-name">就像戒不掉你</span>
+    </a>
+    <nav class="main-nav">
+      <a href="index.html" class="nav-link">首页</a>
+      <a href="blog.html" class="nav-link">日记</a>
+      <span class="nav-link nav-off">相册<span class="mini-badge">未开放</span></span>
+      <span class="nav-link nav-off">留言板<span class="mini-badge">未开放</span></span>
+      <a href="about.html" class="nav-link">关于作者</a>
+    </nav>
+    <div class="header-actions">
+      <span class="search-off" title="搜索 · 未开放">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+      </span>
+      <a href="edit.html" class="btn-upload btn-upload-active">＋ 上传日记</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="edit-wrap">
+
+    <section class="page-hero">
+      <h1>写一篇新日记</h1>
+      <p>写完点发布 · 约 1 分钟后线上生效</p>
+    </section>
+
+    <!-- 首次使用：配置 GitHub 令牌 -->
+    <div class="setup-card" id="setupCard" hidden>
+      <h2>首次使用：连接你的 GitHub</h2>
+      <p class="setup-tip">发布功能需要一枚「细粒度令牌」——相当于一把<b>只能开你这一个仓库、只能写文章文件</b>的钥匙。按下面 6 步生成它：</p>
+      <ol>
+        <li>打开 github.com，点右上角头像 → <b>Settings</b></li>
+        <li>拉到左侧最底部 → <b>Developer settings</b> → <b>Personal access tokens</b> → <b>Fine-grained tokens</b></li>
+        <li>点 <b>Generate new token</b>：名字随便填（如 <code>my-website</code>），Expiration 选 <b>No expiration</b> 或一年</li>
+        <li><b>Repository access</b> 选 <b>Only select repositories</b> → 只勾选 <code>jxjbdn/jxjbdn.github.io</code></li>
+        <li><b>Permissions</b> → Repository permissions → 找到 <b>Contents</b> → 选 <b>Read and write</b>（其他一律不动）</li>
+        <li>点 Generate，复制以 <code>github_pat_</code> 开头的一长串，粘贴到下面</li>
+      </ol>
+      <div class="field">
+        <label>GitHub 用户名</label>
+        <input type="text" id="ownerInput" value="jxjbdn">
+      </div>
+      <div class="field">
+        <label>仓库名</label>
+        <input type="text" id="repoInput" value="jxjbdn.github.io">
+      </div>
+      <div class="field">
+        <label>令牌（只保存在你自己的浏览器里，不会上传到网站）</label>
+        <input type="text" id="tokenInput" placeholder="github_pat_xxxxxxxx……" autocomplete="off">
+      </div>
+      <button class="btn-publish" id="saveTokenBtn">保存并连接</button>
+      <div class="edit-status" id="setupStatus"></div>
+    </div>
+
+    <!-- 写作表单 -->
+    <div id="editForm" hidden>
+      <div class="field">
+        <label>标题</label>
+        <input type="text" id="titleInput" placeholder="给今天起个题目">
+      </div>
+      <div class="field">
+        <label>副标题<span class="opt">可填可不填，会显示在标题下方</span></label>
+        <input type="text" id="subtitleInput" placeholder="一句话概括这篇日记">
+      </div>
+      <div class="field">
+        <label>内容<span class="opt">空一行 = 分一段</span></label>
+        <textarea id="contentInput" placeholder="想写什么都行……&#10;&#10;就像在记事本里一样，段落之间空一行。"></textarea>
+      </div>
+      <div class="field">
+        <label>标签<span class="opt">与网站标签同步，可多选</span></label>
+        <div class="tag-checks" id="tagChecks"><span class="setup-tip">正在同步网站标签……</span></div>
+        <input type="text" id="newTagInput" class="new-tag-input" placeholder="想用新标签？写在这里，多个用逗号隔开（会同时加入网站标签栏）">
+      </div>
+      <button class="btn-publish" id="publishBtn">发布到网站</button>
+      <div class="edit-status" id="statusBox"></div>
+    </div>
+
+  </div>
+</main>
+
+<footer class="site-footer">
+  <p>暂无备案号等信息<span class="dot">·</span>住在 GitHub Pages<span class="dot">·</span>始于 2026.08.18</p>
+</footer>
+
+<script src="publisher.js"></script>
+<script>
+  var setupCard = document.getElementById('setupCard');
+  var editForm = document.getElementById('editForm');
+
+  function enterEditMode() {
+    setupCard.hidden = true;
+    editForm.hidden = false;
+    loadTags();
+  }
+
+  function loadTags() {
+    JD.fetchTags().then(function (tags) {
+      var box = document.getElementById('tagChecks');
+      box.innerHTML = '';
+      tags.forEach(function (t) {
+        var lab = document.createElement('label');
+        lab.className = 'tag-check';
+        lab.innerHTML = '<input type="checkbox" value="' + JD.esc(t) + '"><span>' + JD.esc(t) + '</span>';
+        lab.querySelector('input').addEventListener('change', function () {
+          lab.classList.toggle('on', this.checked);
+        });
+        box.appendChild(lab);
+      });
+    }).catch(function (e) {
+      document.getElementById('tagChecks').innerHTML =
+        '<span class="setup-tip">标签同步失败：' + JD.esc(e.message) +
+        ' <a href="edit.html" onclick="JD.clear()">点此清除令牌重新设置</a></span>';
+    });
+  }
+
+  document.getElementById('saveTokenBtn').addEventListener('click', function () {
+    var btn = this;
+    var owner = document.getElementById('ownerInput').value.trim();
+    var repo = document.getElementById('repoInput').value.trim();
+    var token = document.getElementById('tokenInput').value.trim();
+    var st = document.getElementById('setupStatus');
+    if (!owner || !repo || !token) { st.textContent = '三项都要填哦'; return; }
+    btn.disabled = true; st.textContent = '正在验证连接……';
+    JD.save(owner, repo, token);
+    JD.fetchTags().then(function () {
+      st.textContent = '';
+      enterEditMode();
+    }).catch(function (e) {
+      JD.clear();
+      btn.disabled = false;
+      st.textContent = '连接失败：' + e.message + '（检查令牌是否复制完整、仓库是否选对）';
+    });
+  });
+
+  document.getElementById('publishBtn').addEventListener('click', function () {
+    var btn = this;
+    var title = document.getElementById('titleInput').value.trim();
+    var subtitle = document.getElementById('subtitleInput').value.trim();
+    var content = document.getElementById('contentInput').value.trim();
+    var st = document.getElementById('statusBox');
+
+    if (!title || !content) { st.textContent = '标题和内容都要写～'; return; }
+
+    var tags = [];
+    document.querySelectorAll('#tagChecks input:checked').forEach(function (i) {
+      if (tags.indexOf(i.value) === -1) { tags.push(i.value); }
+    });
+    document.getElementById('newTagInput').value.split(/[,，、]/).forEach(function (t) {
+      t = t.trim().replace(/[<>"'\\]/g, '');
+      if (t && tags.indexOf(t) === -1) { tags.push(t); }
+    });
+    if (tags.length === 0) { st.textContent = '至少选一个标签（或写一个新标签）'; return; }
+
+    btn.disabled = true;
+    st.textContent = '正在发布……会连续提交 3 个文件，请别关闭页面';
+    JD.publishPost({ title: title, subtitle: subtitle, content: content, tags: tags })
+      .then(function (d) {
+        st.innerHTML = '发布成功！<b>' + JD.esc(d.title) + '</b> 已提交。<br>' +
+          'GitHub Pages 需要约 1 分钟构建，之后：<br>' +
+          '<a href="' + d.file + '" target="_blank">查看这篇日记</a> · ' +
+          '<a href="index.html" target="_blank">回首页看效果</a>（刚构建完可能要按 Ctrl+F5 刷新）';
+        document.getElementById('titleInput').value = '';
+        document.getElementById('subtitleInput').value = '';
+        document.getElementById('contentInput').value = '';
+        loadTags();
+      })
+      .catch(function (e) {
+        st.textContent = '发布失败：' + e.message;
+      })
+      .then(function () { btn.disabled = false; });
+  });
+
+  if (JD.configured()) { enterEditMode(); } else { setupCard.hidden = false; }
+</script>
+
+</body>
+</html>

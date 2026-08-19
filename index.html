@@ -26,6 +26,7 @@
       <span class="search-off" title="搜索 · 未开放">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
       </span>
+      <a href="edit.html" class="btn-upload">＋ 上传日记</a>
     </div>
   </div>
 </header>
@@ -43,6 +44,7 @@
     <div class="tag-bar">
       <button class="tag active" data-filter="全部">全部</button>
       <button class="tag" data-filter="网站初期草稿">网站初期草稿</button>
+      <button class="tag tag-add" id="addTagBtn" type="button" title="新增分类标签">＋</button>
     </div>
 
     <section class="cards">
@@ -122,6 +124,31 @@
       cards.forEach(function (card) {
         card.style.display = (f === '全部' || card.dataset.tags.indexOf(f) > -1) ? '' : 'none';
       });
+    });
+  });
+</script>
+
+<script src="publisher.js"></script>
+<script>
+  document.getElementById('addTagBtn').addEventListener('click', function () {
+    if (!JD.configured()) {
+      if (confirm('新增标签需要先在编辑页配置一次 GitHub 令牌（只需一次）。现在去设置吗？')) {
+        location.href = 'edit.html';
+      }
+      return;
+    }
+    var name = prompt('新标签的名字（例如：读书）');
+    if (!name || !name.trim()) { return; }
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = '…';
+    JD.addTag(name).then(function (n) {
+      alert('已添加「' + n + '」，页面即将刷新');
+      location.reload();
+    }).catch(function (e) {
+      alert('失败：' + e.message);
+      btn.disabled = false;
+      btn.textContent = '＋';
     });
   });
 </script>
