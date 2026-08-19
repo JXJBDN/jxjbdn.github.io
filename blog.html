@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>博客 · 就像戒不掉你</title>
+<title>日记 · 就像戒不掉你</title>
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="stylesheet" href="style.css">
 </head>
@@ -17,7 +17,7 @@
     </a>
     <nav class="main-nav">
       <a href="index.html" class="nav-link">首页</a>
-      <a href="blog.html" class="nav-link active">博客</a>
+      <a href="blog.html" class="nav-link active">日记</a>
       <span class="nav-link nav-off">相册<span class="mini-badge">未开放</span></span>
       <span class="nav-link nav-off">留言板<span class="mini-badge">未开放</span></span>
       <a href="about.html" class="nav-link">关于作者</a>
@@ -40,27 +40,24 @@
 
     <div class="tag-bar">
       <button class="tag active" data-filter="全部">全部</button>
-      <button class="tag" data-filter="生活">生活</button>
-      <button class="tag" data-filter="建站">建站</button>
-      <span class="tag tag-off">旅行<span class="mini-badge">未开放</span></span>
-      <span class="tag tag-off">书影<span class="mini-badge">未开放</span></span>
+      <button class="tag" data-filter="网站初期草稿">网站初期草稿</button>
     </div>
 
     <section class="cards">
 
-      <a class="card-item" data-tags="建站" href="post-1.html">
+      <a class="card-item" data-tags="网站初期草稿" href="post-1.html">
         <div class="card-head">
           <span class="date-stamp">2026.08.18</span>
-          <span class="chip chip-soft">#建站</span>
+          <span class="chip chip-soft">#网站初期草稿</span>
         </div>
         <h3 class="card-title">我的网站出生了</h3>
         <p class="card-excerpt">从 VSCode 里一个随便写的 HTML 文件开始。我本来只是想试试「网页是怎么做出来的」，写了点歌词，写了句「张家硕尝试自制网站」，然后把它传上了 GitHub……</p>
         <span class="read-more">阅读全文 →</span>
       </a>
 
-      <div class="card-item card-dashed">
-        <h3 class="card-title">第二篇文章会出现在这里</h3>
-        <p class="card-excerpt">说不定就是你这周随手记下的某一句话 ✎</p>
+      <div class="card-item card-dashed" data-tags="网站初期草稿">
+        <h3 class="card-title">你的新内容会出现在这里</h3>
+        <p class="card-excerpt">从今天起，这里写你自己想写的 ✎</p>
       </div>
 
     </section>
