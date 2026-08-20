@@ -846,3 +846,69 @@ a { color: var(--accent); }
   .link-form { grid-template-columns: 1fr 1fr; }
   .link-form .btn-publish { grid-column: 1 / -1; }
 }
+
+/* ---------- 评论区（连本地学习后端） ---------- */
+.cmt-box {
+  margin-top: 40px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 24px 26px;
+}
+.cmt-title { font-size: 19px; color: var(--ink); margin: 0 0 4px; }
+.cmt-count { font-size: 13px; color: var(--muted); font-weight: 400; margin-left: 6px; }
+.cmt-list { margin-top: 14px; }
+.cmt-item { display: flex; gap: 12px; padding: 13px 0; border-bottom: 1px dashed var(--line); }
+.cmt-item:last-child { border-bottom: none; }
+.cmt-avatar {
+  width: 36px; height: 36px; flex: none; border-radius: 50%;
+  background: var(--accent-soft); color: var(--accent);
+  border: 1px solid rgba(184, 64, 46, 0.28);
+  font-size: 15px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.cmt-body { min-width: 0; flex: 1; }
+.cmt-head { display: flex; align-items: baseline; gap: 10px; }
+.cmt-head b { font-size: 14px; color: var(--ink); }
+.cmt-time { font-size: 12px; color: var(--dim); }
+.cmt-text { margin: 5px 0 0; font-size: 14.5px; line-height: 1.75; color: #4a4338; word-break: break-word; }
+.cmt-offline { font-size: 13.5px; color: var(--muted); padding: 6px 0; }
+.cmt-loading { font-size: 13.5px; color: var(--dim); }
+
+.cmt-form { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 16px; }
+.cmt-userbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.cmt-userbar b { font-size: 14px; color: var(--ink); }
+.cmt-hello { font-size: 13px; color: var(--muted); }
+.cmt-userbar input {
+  font-family: inherit; font-size: 13.5px;
+  border: 1px solid var(--line); border-radius: 9px;
+  padding: 7px 11px; background: var(--bg); color: var(--ink);
+  width: 150px;
+}
+.cmt-userbar input:focus { outline: none; border-color: var(--accent); }
+.cmt-logout {
+  margin-left: auto; background: none; border: 1px solid var(--line);
+  border-radius: 9px; padding: 6px 13px; font-size: 12.5px;
+  color: var(--muted); cursor: pointer; font-family: inherit;
+}
+.cmt-logout:hover { color: var(--accent); border-color: var(--accent); }
+.cmt-form textarea {
+  width: 100%; box-sizing: border-box; font-family: inherit; font-size: 14.5px;
+  border: 1px solid var(--line); border-radius: 12px; line-height: 1.7;
+  padding: 12px 14px; background: var(--bg); color: var(--ink); resize: vertical;
+}
+.cmt-form textarea:focus { outline: none; border-color: var(--accent); }
+.cmt-actions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 10px; }
+.cmt-msg { font-size: 13px; color: var(--accent); }
+.cmt-btn {
+  background: var(--accent); color: #fff; border: none; border-radius: 10px;
+  padding: 9px 22px; font-size: 14px; cursor: pointer; font-family: inherit;
+  box-shadow: 0 8px 18px -10px rgba(184, 64, 46, 0.55);
+}
+.cmt-btn:hover { background: var(--accent-deep); }
+.cmt-btn-sm { padding: 7px 16px; font-size: 13px; }
+.cmt-btn-ghost {
+  background: none; color: var(--muted); border: 1px solid var(--line); box-shadow: none;
+}
+.cmt-btn-ghost:hover { color: var(--accent); border-color: var(--accent); background: none; }
+.cmt-note { margin: 14px 0 0; font-size: 12px; color: var(--dim); text-align: center; }
