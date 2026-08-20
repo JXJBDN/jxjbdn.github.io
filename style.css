@@ -947,3 +947,102 @@ a { color: var(--accent); }
 @media (max-width: 640px) {
   .cmt-box { padding: 20px 16px 16px; margin-left: 18px; margin-right: 18px; }
 }
+
+/* ============ 公告弹窗：顶部中间，只有「×」能关 ============ */
+.ann-pop {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(560px, calc(100vw - 28px));
+  z-index: 300;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--accent);
+  border-radius: 14px;
+  box-shadow: 0 18px 50px rgba(60, 42, 20, 0.22);
+  padding: 18px 46px 16px 18px;
+  display: flex;
+  gap: 14px;
+  animation: ann-in 0.45s ease-out;
+}
+@keyframes ann-in {
+  from { top: -90px; opacity: 0; }
+  to { top: 18px; opacity: 1; }
+}
+.ann-seal {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-family: "Kaiti SC", "STKaiti", "KaiTi", serif;
+  font-size: 21px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: rotate(-6deg);
+  box-shadow: 0 3px 8px rgba(184, 64, 46, 0.35);
+}
+.ann-body { flex: 1; min-width: 0; }
+.ann-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.ann-title { font-weight: 700; font-size: 16px; letter-spacing: 0.02em; }
+.ann-time { font-size: 12px; color: var(--dim); }
+.ann-text { margin-top: 6px; font-size: 14.5px; color: var(--muted); line-height: 1.8; }
+.ann-text p + p { margin-top: 4px; }
+.ann-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.ann-close:hover { color: #fff; background: var(--accent); border-color: var(--accent); }
+@media (max-width: 560px) {
+  .ann-pop { padding: 14px 40px 12px 14px; }
+  .ann-seal { width: 34px; height: 34px; font-size: 18px; }
+  .ann-title { font-size: 15px; }
+  .ann-text { font-size: 14px; }
+}
+
+/* 公告管理表单（编辑页） */
+.ann-form { display: flex; flex-direction: column; gap: 10px; margin: 12px 0 6px; }
+.ann-form input,
+.ann-textarea {
+  font-family: inherit;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+  padding: 9px 12px;
+  font-size: 14px;
+  color: var(--ink);
+  width: 100%;
+}
+.ann-form input:focus,
+.ann-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.ann-textarea { resize: vertical; min-height: 74px; line-height: 1.7; }
+.ann-form .btn-publish { align-self: flex-start; }
+.ann-now {
+  padding: 10px 12px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  margin-top: 4px;
+}
+.ann-now-text {
+  font-size: 13.5px;
+  color: var(--muted);
+  margin: 4px 0 8px;
+  white-space: pre-wrap;
+}

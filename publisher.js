@@ -332,6 +332,56 @@ var JD = {
     });
   },
 
+  /* ---------- 公告 ---------- */
+
+  /* 读当前公告；没发过（404）返回 null */
+  fetchAnnouncement: function () {
+    return this.get('announcement.json').then(function (g) {
+      var obj; try { obj = JSON.parse(g.text); } catch (e) { obj = null; }
+      return (obj && obj.text) ? obj : null;
+    }).catch(function (e) {
+      if (e.notFound) { return null; }
+      throw e;
+    });
+  },
+
+  /* 发布（覆盖旧公告）：announcement.json 是公告的"数据库" */
+  publishAnnouncement: function (raw) {
+    var title = String(raw.title || '').trim().replace(/[<>"\\]/g, '');
+    var text = String(raw.text || '').trim();
+    if (!text) { return Promise.reject(new Error('公告内容不能为空')); }
+    var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+    var d = new Date();
+    var obj = {
+      title: title || '公告',
+      text: text,
+      updatedAt: d.getFullYear() + '.' + pad(d.getMonth() + 1) + '.' + pad(d.getDate()) +
+        ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes())
+    };
+    return this.put('announcement.json', JSON.stringify(obj, null, 2) + '\n',
+      '发布公告：' + obj.title).then(function () { return obj; });
+  },
+
+  /* 撤下：删掉仓库里的 announcement.json，弹窗随之消失 */
+  withdrawAnnouncement: function () {
+    var self = this;
+    return this.get('announcement.json').then(function (g) {
+      return fetch(self._url('announcement.json'), {
+        method: 'DELETE',
+        headers: self._headers({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ message: '撤下公告', sha: g.sha, branch: 'main' })
+      }).then(function (r) {
+        if (r.ok) { return true; }
+        return r.json().then(function (j) {
+          throw new Error('撤下失败：' + (j.message || r.status));
+        }, function () { throw new Error('撤下失败：' + r.status); });
+      });
+    }).catch(function (e) {
+      if (e.notFound) { throw new Error('现在没有正在展示的公告'); }
+      throw e;
+    });
+  },
+
   /* ---------- 发布日记 ---------- */
 
   publishPost: function (data) {
@@ -514,7 +564,8 @@ var POST_TEMPLATE = [
   '  <p>暂无备案号等信息<span class="dot">·</span>住在 GitHub Pages<span class="dot">·</span>始于 2026.08.18</p>',
   '</footer>',
   '',
-  '<script src="../comments.js"></script>',
+  '<script src="../announcement.js"></script>',
+'<script src="../comments.js"></script>',
   '',
   '</body>',
   '</html>'
