@@ -294,6 +294,44 @@ var JD = {
     });
   },
 
+  /* ---------- 友链 ---------- */
+
+  /* links.json 不存在（还没加过友链）就当空列表 */
+  fetchLinks: function () {
+    return this.get('links.json').then(function (g) {
+      var obj; try { obj = JSON.parse(g.text); } catch (e) { obj = {}; }
+      return Array.isArray(obj.items) ? obj.items : [];
+    }).catch(function (e) {
+      if (e.notFound) { return []; }
+      throw e;
+    });
+  },
+
+  addLink: function (raw) {
+    var self = this;
+    var name = String(raw.name || '').trim().replace(/[<>"\\]/g, '');
+    var url = String(raw.url || '').trim();
+    var desc = String(raw.desc || '').trim().replace(/[<>"\\]/g, '');
+    if (!name || !url) { return Promise.reject(new Error('昵称和网址都要填')); }
+    if (!/^https?:\/\//.test(url)) { url = 'https://' + url; }
+    return this.fetchLinks().then(function (items) {
+      if (items.some(function (it) { return it.url === url; })) {
+        throw new Error('这个网址已经加过啦');
+      }
+      items.unshift({ name: name, url: url, desc: desc });
+      return self.put('links.json', JSON.stringify({ items: items }, null, 2) + '\n', '友链新增：' + name);
+    });
+  },
+
+  removeLink: function (url) {
+    var self = this;
+    return this.fetchLinks().then(function (items) {
+      var left = items.filter(function (it) { return it.url !== url; });
+      if (left.length === items.length) { throw new Error('没有找到这条友链'); }
+      return self.put('links.json', JSON.stringify({ items: left }, null, 2) + '\n', '友链移除');
+    });
+  },
+
   /* ---------- 发布日记 ---------- */
 
   publishPost: function (data) {
@@ -332,8 +370,10 @@ var JD = {
       });
 
       var galleryOps = (data.images || []).map(function (img) {
-        return { src: img.path, title: data.title, wroteAt: data.wroteAt, post: data.file };
-      });
+        return { src: img.path, type: 'image', title: data.title, wroteAt: data.wroteAt, post: data.file };
+      }).concat((data.videos || []).map(function (v) {
+        return { src: v.path, type: 'video', title: data.title, wroteAt: data.wroteAt, post: data.file };
+      }));
 
       return self.put(data.file, self.buildPostPage(data), '新增日记：' + data.title)
         .then(function () { return self.put('index.html', newIndex, '首页更新：' + data.title); })
@@ -359,8 +399,8 @@ var JD = {
   },
 
   buildCard: function (d) {
-    var firstPara = (d.content.split(/\n\s*\n/)[0] || '').trim();
-    var excerpt = d.subtitle || firstPara.slice(0, 60);
+    var firstPara = (d.content.split(/\n\s*\n/)[0] || '').trim().replace(/\[(图|视频)\d+\]/g, '');
+    var excerpt = d.subtitle || firstPara.slice(0, 60) || '一篇新日记';
     return '<a class="card-item" data-tags="' + d.tags.join(',') + '" href="' + d.file + '">\n' +
       '        <div class="card-head">\n' +
       '          <span class="date-stamp">' + d.date + ' ' + d.time + '</span>\n' +
@@ -377,19 +417,26 @@ var JD = {
       return '<span class="chip chip-soft">#' + JD.esc(t) + '</span>';
     }).join('\n    ');
 
-    var imgByMarker = {};
-    (d.images || []).forEach(function (img) { imgByMarker[img.marker] = img; });
+    var mediaByMarker = {};
+    (d.images || []).forEach(function (img) { mediaByMarker[img.marker] = { path: img.path, kind: 'image' }; });
+    (d.videos || []).forEach(function (v) { mediaByMarker[v.marker] = { path: v.path, kind: 'video' }; });
 
     var blocks = [];
     d.content.split(/\n\s*\n/).forEach(function (raw) {
       var b = raw.trim();
       if (!b) { return; }
-      var m = b.match(/^\[(图\d+)\]$/);
-      if (m && imgByMarker[m[1]]) {
-        blocks.push('    <figure class="post-img"><img src="' + imgByMarker[m[1]].path +
-          '" alt="' + JD.esc(d.title) + '" loading="lazy"></figure>');
+      var m = b.match(/^\[(图|视频)\d+\]$/);
+      if (m && mediaByMarker[m[0].slice(1, -1)]) {
+        var md = mediaByMarker[m[0].slice(1, -1)];
+        if (md.kind === 'video') {
+          blocks.push('    <figure class="post-video"><video src="' + md.path +
+            '" controls preload="metadata" playsinline></video></figure>');
+        } else {
+          blocks.push('    <figure class="post-img"><img src="' + md.path +
+            '" alt="' + JD.esc(d.title) + '" loading="lazy"></figure>');
+        }
       } else {
-        var txt = JD.esc(b).replace(/\[图\d+\]/g, '');
+        var txt = JD.esc(b).replace(/\[(图|视频)\d+\]/g, '');
         if (txt) { blocks.push('    <p class="body-text">' + txt + '</p>'); }
       }
     });
@@ -431,6 +478,7 @@ var POST_TEMPLATE = [
   '      <a href="blog.html" class="nav-link">日记</a>',
   '      <a href="photos.html" class="nav-link">相册</a>',
   '      <span class="nav-link nav-off">留言板<span class="mini-badge">未开放</span></span>',
+  '      <a href="links.html" class="nav-link">友链</a>',
   '      <a href="about.html" class="nav-link">关于作者</a>',
   '    </nav>',
   '    <div class="header-actions">',

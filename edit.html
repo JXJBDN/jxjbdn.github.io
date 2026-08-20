@@ -20,6 +20,7 @@
       <a href="blog.html" class="nav-link">日记</a>
       <a href="photos.html" class="nav-link">相册</a>
       <span class="nav-link nav-off">留言板<span class="mini-badge">未开放</span></span>
+      <a href="links.html" class="nav-link">友链</a>
       <a href="about.html" class="nav-link">关于作者</a>
     </nav>
     <div class="header-actions">
@@ -83,9 +84,9 @@
 
         <div class="field field-body">
           <div class="img-toolbar">
-            <button type="button" class="btn-ins-img" id="insertImgBtn">＋ 插入图片</button>
-            <span class="opt">图片插到光标处，发布后自动同步进「相册」</span>
-            <input type="file" id="imgInput" accept="image/*" multiple hidden>
+            <button type="button" class="btn-ins-img" id="insertImgBtn">＋ 插入图片 / 视频</button>
+            <span class="opt">插到光标处，发布后自动同步进「相册」（视频 ≤ 15MB，建议 mp4）</span>
+            <input type="file" id="imgInput" accept="image/*,video/*" multiple hidden>
           </div>
           <textarea id="contentInput" class="paper-lines" placeholder="想写什么都行……&#10;&#10;像在稿纸上写字一样，段落之间空一行。"></textarea>
           <div class="img-strip" id="imgStrip" hidden></div>
@@ -123,6 +124,21 @@
           <summary>管理日记标签（随时改）</summary>
           <p class="setup-tip">点某篇日记的「改标签」，重新勾选后保存。改动会同步首页卡片、日记页卡片和文章页。</p>
           <div id="postMgrList" class="tag-mgr-list"><span class="setup-tip">载入中……</span></div>
+        </details>
+      </div>
+
+      <!-- 友链管理 -->
+      <div class="tag-mgr-card">
+        <details>
+          <summary>友链管理（好友网站）</summary>
+          <p class="setup-tip">添加好友的网站，会展示在导航栏的「友链」页面。网址不带 http:// 也行，会自动补全。</p>
+          <div class="link-form">
+            <input type="text" id="linkName" placeholder="好友昵称（如：小明）">
+            <input type="text" id="linkUrl" placeholder="网址（如：xiaoming.com）">
+            <input type="text" id="linkDesc" placeholder="一句话介绍（可不填）">
+            <button type="button" class="btn-publish" id="addLinkBtn">添加</button>
+          </div>
+          <div id="linkMgrList" class="tag-mgr-list"><span class="setup-tip">载入中……</span></div>
         </details>
       </div>
     </div>
@@ -236,7 +252,11 @@
     pendingImages.forEach(function (p, i) {
       var d = document.createElement('div');
       d.className = 'img-thumb';
-      d.innerHTML = '<img src="' + p.b64 + '"><button type="button" class="img-x" title="移除">×</button><span>[' + p.marker + ']</span>';
+      var media = p.kind === 'video'
+        ? '<video src="' + p.b64 + '" muted preload="metadata"></video>'
+        : '<img src="' + p.b64 + '">';
+      d.innerHTML = media + '<button type="button" class="img-x" title="移除">×</button><span>' +
+        (p.kind === 'video' ? '▶ [' + p.marker + ']' : '[' + p.marker + ']') + '</span>';
       d.querySelector('.img-x').addEventListener('click', function () {
         var re = new RegExp('\\n*\\[' + p.marker + '\\]\\n*', 'g');
         contentInput.value = contentInput.value.replace(re, '\n\n');
@@ -251,26 +271,43 @@
     document.getElementById('imgInput').click();
   });
 
+  /* 视频：浏览器里没法像图片那样压缩重编码，直接原样上传，所以限 15MB */
+  function processVideoFile(file) {
+    return new Promise(function (resolve, reject) {
+      if (file.size > 15 * 1024 * 1024) {
+        reject(new Error('视频 ' + (file.size / 1048576).toFixed(1) + 'MB，超过 15MB 上限——请剪短一点再传'));
+        return;
+      }
+      var ext = (file.name.match(/\.(\w+)$/) || [])[1];
+      ext = ['mp4', 'webm', 'mov', 'm4v', 'avi'].indexOf(ext) > -1 ? ext : 'mp4';
+      var r = new FileReader();
+      r.onload = function () { resolve({ b64: r.result, ext: ext }); };
+      r.onerror = function () { reject(new Error('读取失败')); };
+      r.readAsDataURL(file);
+    });
+  }
+
   document.getElementById('imgInput').addEventListener('change', function () {
     var files = Array.prototype.slice.call(this.files || []);
     this.value = '';
     if (!files.length) { return; }
-    draftHint.textContent = '正在处理图片……';
+    draftHint.textContent = '正在处理文件……';
     var chain = Promise.resolve();
     files.forEach(function (f) {
       chain = chain.then(function () {
-        return processImageFile(f).then(function (r) {
+        var isVideo = /^video\//.test(f.type) || /\.(mp4|webm|mov|m4v|avi)$/i.test(f.name);
+        return (isVideo ? processVideoFile(f) : processImageFile(f)).then(function (r) {
           imgSeq++;
-          var marker = '图' + imgSeq;
+          var marker = (isVideo ? '视频' : '图') + imgSeq;
           insertAtCursor(contentInput, '\n\n[' + marker + ']\n\n');
-          pendingImages.push({ marker: marker, b64: r.b64, ext: r.ext });
+          pendingImages.push({ marker: marker, b64: r.b64, ext: r.ext, kind: isVideo ? 'video' : 'image' });
           renderImgStrip();
           draftHint.textContent = '草稿会自动保存在本机';
         });
       });
     });
     chain.catch(function (e) {
-      alert('图片处理失败：' + (e && e.message ? e.message : e));
+      alert('文件处理失败：' + (e && e.message ? e.message : e));
       draftHint.textContent = '草稿会自动保存在本机';
     });
   });
@@ -284,6 +321,7 @@
     loadTags();
     renderTagMgr();
     renderPostMgr();
+    renderLinks();
   }
 
   function loadTags() {
@@ -420,6 +458,53 @@
     });
   }
 
+  /* ---------- 友链管理 ---------- */
+  function renderLinks() {
+    var box = document.getElementById('linkMgrList');
+    JD.fetchLinks().then(function (items) {
+      box.innerHTML = '';
+      if (!items.length) {
+        box.innerHTML = '<span class="setup-tip">还没有友链，用上面表单添加第一条吧</span>';
+        return;
+      }
+      items.forEach(function (it) {
+        var row = document.createElement('div');
+        row.className = 'tag-mgr-row';
+        row.innerHTML = '<span class="mgr-name"><a href="' + JD.esc(it.url) + '" target="_blank" rel="noopener">' +
+          JD.esc(it.name) + '</a>' +
+          (it.desc ? ' <span class="post-mgr-meta">' + JD.esc(it.desc) + '</span>' : '') + '</span>' +
+          '<span class="mgr-btns"><button type="button" class="mgr-del">删除</button></span>';
+        row.querySelector('button').addEventListener('click', function () {
+          if (!confirm('删除友链「' + it.name + '」？')) { return; }
+          JD.removeLink(it.url).then(function () {
+            alert('已删除，约 1 分钟后线上生效');
+            renderLinks();
+          }).catch(function (e) { alert('失败：' + e.message); });
+        });
+        box.appendChild(row);
+      });
+    }).catch(function (e) {
+      box.innerHTML = '<span class="setup-tip">载入失败：' + JD.esc(e.message) + '</span>';
+    });
+  }
+
+  document.getElementById('addLinkBtn').addEventListener('click', function () {
+    var btn = this;
+    btn.disabled = true;
+    JD.addLink({
+      name: document.getElementById('linkName').value,
+      url: document.getElementById('linkUrl').value,
+      desc: document.getElementById('linkDesc').value
+    }).then(function () {
+      document.getElementById('linkName').value = '';
+      document.getElementById('linkUrl').value = '';
+      document.getElementById('linkDesc').value = '';
+      alert('已添加，约 1 分钟后线上生效');
+      renderLinks();
+    }).catch(function (e) { alert('失败：' + e.message); })
+      .then(function () { btn.disabled = false; });
+  });
+
   document.getElementById('saveTokenBtn').addEventListener('click', function () {
     var btn = this;
     var owner = document.getElementById('ownerInput').value.trim();
@@ -459,18 +544,18 @@
     });
     if (tags.length === 0) { st.textContent = '至少选一个标签（或写一个新标签）'; return; }
 
-    /* 图片标记与待传图片必须一一对应 */
-    var txtMarkers = (content.match(/\[图\d+\]/g) || []).map(function (s) { return s.slice(1, -1); });
+    /* 媒体标记与待传文件必须一一对应（图N / 视频N） */
+    var txtMarkers = (content.match(/\[(图|视频)\d+\]/g) || []).map(function (s) { return s.slice(1, -1); });
     var pendMarkers = pendingImages.map(function (p) { return p.marker; });
     var missing = txtMarkers.filter(function (m) { return pendMarkers.indexOf(m) === -1; });
     var orphan = pendMarkers.filter(function (m) { return txtMarkers.indexOf(m) === -1; });
     if (missing.length || orphan.length) {
       var msgs = [];
       if (missing.length) {
-        msgs.push('正文里的 [' + missing.join('] [') + '] 没有对应图片（刷新过页面图片不会保留，请删掉标记或重新插图）');
+        msgs.push('正文里的 [' + missing.join('] [') + '] 没有对应文件（刷新过页面图片视频不会保留，请删掉标记或重新插入）');
       }
       if (orphan.length) {
-        msgs.push('[' + orphan.join('] [') + '] 的图片没有插进正文（缩略图上点 × 可移除）');
+        msgs.push('[' + orphan.join('] [') + '] 的文件没有插进正文（缩略图上点 × 可移除）');
       }
       st.textContent = msgs.join('；');
       return;
@@ -479,32 +564,34 @@
     btn.disabled = true;
     st.className = 'edit-status';
 
-    function uploadImages() {
+    function uploadMedia() {
       var pad = function (n) { return (n < 10 ? '0' : '') + n; };
       var d = new Date();
       var stamp = '' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) +
         '-' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
-      var uploaded = [];
+      var images = [], videos = [];
       return new Promise(function (resolve, reject) {
         (function next(i) {
-          if (i >= pendingImages.length) { resolve(uploaded); return; }
+          if (i >= pendingImages.length) { resolve({ images: images, videos: videos }); return; }
           var p = pendingImages[i];
-          var path = 'images/' + stamp + '-' + (i + 1) + '.' + p.ext;
-          st.textContent = '正在上传图片 ' + (i + 1) + '/' + pendingImages.length + '……';
-          JD.put(path, p.b64, '上传图片：' + path, true).then(function () {
-            uploaded.push({ marker: p.marker, path: path });
+          var dir = p.kind === 'video' ? 'videos' : 'images';
+          var path = dir + '/' + stamp + '-' + (i + 1) + '.' + p.ext;
+          st.textContent = '正在上传文件 ' + (i + 1) + '/' + pendingImages.length + '……';
+          JD.put(path, p.b64, '上传文件：' + path, true).then(function () {
+            (p.kind === 'video' ? videos : images).push({ marker: p.marker, path: path });
             next(i + 1);
           }).catch(reject);
         })(0);
       });
     }
 
-    uploadImages()
-      .then(function (images) {
-        st.textContent = images.length
-          ? '图片上传完成，正在提交日记……'
+    uploadMedia()
+      .then(function (media) {
+        var n = media.images.length + media.videos.length;
+        st.textContent = n
+          ? '文件上传完成，正在提交日记……'
           : '正在发布……会连续提交 3 个文件，请别关闭页面';
-        return JD.publishPost({ title: title, subtitle: subtitle, content: content, tags: tags, images: images });
+        return JD.publishPost({ title: title, subtitle: subtitle, content: content, tags: tags, images: media.images, videos: media.videos });
       })
       .then(function (d) {
         localStorage.removeItem('jd_draft');
