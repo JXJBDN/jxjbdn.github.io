@@ -146,26 +146,44 @@ var JD = {
     });
   },
 
-  /* 删除：同时清掉两个页面标签栏、卡片 data-tags 和卡片上的标签胶囊 */
+  /* 删除：清掉两个页面标签栏和卡片引用；一个标签不剩的卡片自动落入「待定」 */
   removeTag: function (tag) {
     var self = this;
+    if (tag === '待定') { return Promise.reject(new Error('「待定」是兜底标签，不能删除')); }
     return this.get('index.html').then(function (g) {
       var tags = self.readTagBar(g.text);
       if (tags.indexOf(tag) === -1) { throw new Error('找不到标签 ' + tag); }
       tags.splice(tags.indexOf(tag), 1);
       return Promise.all([self.get('index.html'), self.get('blog.html')]).then(function (fs) {
         return Promise.all(fs.map(function (f, idx) {
-          var h = f.text;
-          h = self.replaceTagBar(h, tags);
-          h = h.replace(/data-tags="([^"]*)"/g, function (mm, csv) {
-            var list = csv.split(',').filter(function (t) { return t !== tag; });
-            return 'data-tags="' + list.join(',') + '"';
-          });
-          h = h.replace(new RegExp('<span class="chip chip-soft">#' + self._reEsc(tag) + '</span>\\s*', 'g'), '');
+          var h = self._stripTag(f.text, tag, tags);
           return self.put(idx === 0 ? 'index.html' : 'blog.html', h, '移除标签：' + tag);
         }));
       });
     });
+  },
+
+  /* 从一个页面里移除标签：标签栏、卡片 data-tags、卡片胶囊；空卡片 → 待定 */
+  _stripTag: function (html, tag, barTags) {
+    var self = this;
+    var needPending = false;
+
+    html = html.replace(/(<a class="card-item[^"]*"[^>]*data-tags=")([^"]*)("[^>]*>)/g, function (m, pre, csv, post) {
+      if (csv.indexOf(tag) === -1) { return m; }
+      var list = csv.split(',').filter(function (t) { return t && t !== tag; });
+      if (!list.length) { list = ['待定']; needPending = true; }
+      return pre + list.join(',') + post;
+    });
+
+    html = html.replace(new RegExp('<span class="chip chip-soft">#' + self._reEsc(tag) + '</span>\\s*', 'g'), '');
+
+    /* 落入待定的卡片补回一枚 #待定 胶囊 */
+    html = html.replace(/(<a class="card-item[^"]*"[^>]*data-tags="待定"[^>]*>\s*<div class="card-head">\s*<span class="date-stamp">[^<]*<\/span>)\s*/g,
+      '$1\n          <span class="chip chip-soft">#待定</span>\n        ');
+
+    var newBar = barTags.slice();
+    if (needPending && newBar.indexOf('待定') === -1) { newBar.push('待定'); }
+    return this.replaceTagBar(html, newBar);
   },
 
   _writeTagBars: function (tags, msg) {
@@ -180,6 +198,83 @@ var JD = {
 
   _reEsc: function (s) {
     return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  },
+
+  /* ---------- 日记管理 ---------- */
+
+  /* 列出所有日记卡片（从日记页解析） */
+  listPosts: function () {
+    return this.get('blog.html').then(function (g) {
+      var posts = [];
+      var re = /<a class="card-item[^"]*"([^>]*)>([\s\S]*?)<\/a>/g, m;
+      while ((m = re.exec(g.text))) {
+        var href = (m[1].match(/href="([^"]+)"/) || [])[1];
+        var tagsCsv = (m[1].match(/data-tags="([^"]*)"/) || [])[1] || '';
+        var title = ((m[2].match(/<h3 class="card-title">([^<]*)<\/h3>/) || [])[1] || '').trim();
+        var date = ((m[2].match(/<span class="date-stamp">([^<]*)<\/span>/) || [])[1] || '').trim();
+        if (href && /\.html$/.test(href) && title) {
+          posts.push({ file: href, title: title, date: date, tags: tagsCsv.split(',').filter(Boolean) });
+        }
+      }
+      return posts;
+    });
+  },
+
+  /* 修改一篇日记的标签：同步首页卡片、日记页卡片、文章页胶囊 */
+  updatePostTags: function (file, rawTags) {
+    var self = this;
+    var tags = (rawTags || []).map(function (t) {
+      return String(t).trim().replace(/[<>"'\\]/g, '');
+    }).filter(Boolean);
+    if (!tags.length) { return Promise.reject(new Error('至少保留一个标签')); }
+
+    return Promise.all([this.get('index.html'), this.get('blog.html')]).then(function (fs) {
+      var updated = fs.map(function (f) {
+        var h = self._setCardTags(f.text, file, tags);
+        if (h === null) { throw new Error('页面里找不到 ' + file + ' 的卡片'); }
+        tags.forEach(function (t) { h = self.ensureTag(h, t); });
+        return h;
+      });
+      return Promise.all([
+        self.put('index.html', updated[0], '更新日记标签：' + file),
+        self.put('blog.html', updated[1], '更新日记标签：' + file)
+      ]);
+    }).then(function () {
+      return self.get(file).catch(function (e) {
+        if (e.notFound) { return null; }
+        throw e;
+      });
+    }).then(function (pf) {
+      if (!pf) { return null; }
+      var chips = tags.map(function (t) {
+        return '<span class="chip chip-soft">#' + JD.esc(t) + '</span>';
+      }).join('\n      ');
+      var page = pf.text.replace(/<div class="article-meta">[\s\S]*?<\/div>/, function (mm) {
+        var date = ((mm.match(/<span class="date-stamp">([^<]*)<\/span>/) || [])[1] || '').trim();
+        return '<div class="article-meta">\n      <span class="date-stamp">' + date + '</span>\n      ' +
+          chips + '\n    </div>';
+      });
+      if (page === pf.text) { return null; }
+      return self.put(file, page, '更新日记标签：' + file);
+    });
+  },
+
+  /* 替换某张卡片的 data-tags 和胶囊（找不到卡片返回 null） */
+  _setCardTags: function (html, file, tags) {
+    var re = new RegExp('(<a class="card-item[^"]*"[^>]*href="' + this._reEsc(file) + '"[^>]*>)([\\s\\S]*?)(</a>)');
+    var m = html.match(re);
+    if (!m) { return null; }
+    var head = m[1].replace(/data-tags="[^"]*"/, 'data-tags="' + tags.join(',') + '"');
+    var chip = '<span class="chip chip-soft">#' + JD.esc(tags[0]) + '</span>';
+    var body;
+    if (m[2].indexOf('chip chip-soft') > -1) {
+      body = m[2].replace(/<span class="chip chip-soft">#[^<]*<\/span>/, chip);
+    } else {
+      body = m[2].replace(/(<div class="card-head">\s*<span class="date-stamp">[^<]*<\/span>)/,
+        '$1\n          ' + chip);
+    }
+    if (head === m[1] && m[1].indexOf('data-tags') === -1) { return null; }
+    return html.replace(re, head + body + m[3]);
   },
 
   /* ---------- 相册 ---------- */

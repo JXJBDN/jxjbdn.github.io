@@ -586,6 +586,27 @@ a { color: var(--accent); }
 .mgr-btns button:disabled { opacity: 0.35; cursor: default; }
 .mgr-del:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); color: #fff; }
 
+/* --- 日记标签管理 --- */
+.post-mgr-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 2px; border-bottom: 1px dashed var(--line); }
+.post-mgr-info b { display: block; font-size: 14px; color: var(--ink); font-weight: 600; }
+.post-mgr-meta { font-size: 12.5px; color: var(--dim); }
+.mgr-edit-btn {
+  font-family: inherit;
+  font-size: 12.5px;
+  padding: 5px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: #5d5346;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.mgr-edit-btn:hover { border-color: var(--accent); color: var(--accent); }
+.post-mgr-editor { padding: 12px 2px 16px; border-bottom: 1px dashed var(--line); }
+.post-mgr-editor .tag-checks { margin-bottom: 12px; }
+.mgr-save-btn { padding: 7px 22px !important; font-size: 13.5px !important; }
+.mgr-status { margin-left: 12px; }
+
 /* --- 相册 --- */
 .photos-wrap { max-width: 1080px; margin: 0 auto; padding: 0 28px 72px; }
 .photos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px; margin-top: 30px; }

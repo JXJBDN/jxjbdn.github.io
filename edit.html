@@ -112,8 +112,17 @@
       <div class="tag-mgr-card">
         <details>
           <summary>整理标签（删除 · 排序）</summary>
-          <p class="setup-tip">改动会立即写回网站的首页和日记页标签栏，约 1 分钟后线上生效。删除标签不影响文章本身。</p>
+          <p class="setup-tip">改动会立即写回网站的首页和日记页标签栏，约 1 分钟后线上生效。删除标签不影响文章本身；一个标签不剩的日记会自动落入「待定」，不怕误删。</p>
           <div id="tagMgrList" class="tag-mgr-list"><span class="setup-tip">载入中……</span></div>
+        </details>
+      </div>
+
+      <!-- 日记标签管理 -->
+      <div class="tag-mgr-card">
+        <details>
+          <summary>管理日记标签（随时改）</summary>
+          <p class="setup-tip">点某篇日记的「改标签」，重新勾选后保存。改动会同步首页卡片、日记页卡片和文章页。</p>
+          <div id="postMgrList" class="tag-mgr-list"><span class="setup-tip">载入中……</span></div>
         </details>
       </div>
     </div>
@@ -274,6 +283,7 @@
     updateCount();
     loadTags();
     renderTagMgr();
+    renderPostMgr();
   }
 
   function loadTags() {
@@ -333,6 +343,77 @@
           });
         });
         box.appendChild(row);
+      });
+    }).catch(function (e) {
+      box.innerHTML = '<span class="setup-tip">载入失败：' + JD.esc(e.message) + '</span>';
+    });
+  }
+
+  /* ---------- 日记标签管理 ---------- */
+  function renderPostMgr() {
+    var box = document.getElementById('postMgrList');
+    Promise.all([JD.listPosts(), JD.fetchTags()]).then(function (res) {
+      var posts = res[0], siteTags = res[1];
+      box.innerHTML = '';
+      if (!posts.length) {
+        box.innerHTML = '<span class="setup-tip">还没有日记，发布第一篇后这里就能管理了</span>';
+        return;
+      }
+      posts.forEach(function (p) {
+        var row = document.createElement('div');
+        row.className = 'post-mgr-row';
+        row.innerHTML = '<div class="post-mgr-info"><b>' + JD.esc(p.title) + '</b>' +
+          '<span class="post-mgr-meta">' + JD.esc(p.date) + ' · ' +
+          (p.tags.length ? p.tags.map(function (t) { return '#' + JD.esc(t); }).join(' ') : '（无标签）') +
+          '</span></div><button type="button" class="mgr-edit-btn">改标签</button>';
+        box.appendChild(row);
+
+        var editor = document.createElement('div');
+        editor.className = 'post-mgr-editor';
+        editor.hidden = true;
+        editor.innerHTML = '<div class="tag-checks"></div>' +
+          '<button type="button" class="btn-publish mgr-save-btn">保存</button>' +
+          '<span class="setup-tip mgr-status"></span>';
+        box.appendChild(editor);
+
+        row.querySelector('.mgr-edit-btn').addEventListener('click', function () {
+          editor.hidden = !editor.hidden;
+          if (!editor.hidden && !editor.dataset.built) {
+            editor.dataset.built = '1';
+            var checks = editor.querySelector('.tag-checks');
+            siteTags.concat(['待定']).forEach(function (t, i, arr) {
+              if (t === '待定' && arr.indexOf('待定') !== i) { return; }
+              var lab = document.createElement('label');
+              lab.className = 'tag-check' + (p.tags.indexOf(t) > -1 ? ' on' : '');
+              lab.innerHTML = '<input type="checkbox" value="' + JD.esc(t) + '"' +
+                (p.tags.indexOf(t) > -1 ? ' checked' : '') + '><span>' + JD.esc(t) + '</span>';
+              lab.querySelector('input').addEventListener('change', function () {
+                lab.classList.toggle('on', this.checked);
+              });
+              checks.appendChild(lab);
+            });
+          }
+        });
+
+        editor.querySelector('.mgr-save-btn').addEventListener('click', function () {
+          var saveBtn = this;
+          var newTags = [];
+          editor.querySelectorAll('input:checked').forEach(function (i) {
+            if (newTags.indexOf(i.value) === -1) { newTags.push(i.value); }
+          });
+          var st = editor.querySelector('.mgr-status');
+          if (!newTags.length) { st.textContent = '至少保留一个标签'; return; }
+          saveBtn.disabled = true;
+          st.textContent = '正在保存……';
+          JD.updatePostTags(p.file, newTags).then(function () {
+            alert('已更新，约 1 分钟后线上生效');
+            renderPostMgr();
+          }).catch(function (e) {
+            alert('失败：' + e.message);
+            st.textContent = '';
+            saveBtn.disabled = false;
+          });
+        });
       });
     }).catch(function (e) {
       box.innerHTML = '<span class="setup-tip">载入失败：' + JD.esc(e.message) + '</span>';
