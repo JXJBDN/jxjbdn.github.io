@@ -5,10 +5,11 @@
    · 每篇日记页引入这个文件，自动在文章底部生成评论区
    · 评论数据从后端的 /api/comments 拉取，发表走 /api/comment
    · 账号就是你后端里注册的用户（登录拿到 sid 通行证存在本机）
+   · 地址自动寻找：优先试上次能用的地址 → 本机 localhost →
+     仓库里 tunnel.json 记录的隧道地址（手机走的路）
    · 后端没开机时，这里会安静地显示"评论区还在路上"
-   以后后端部署到云上，把下面地址改成云地址，全员即可评论。
    ============================================================ */
-var CMT_API = 'http://localhost:3456';
+var CMT_API = '';
 
 (function () {
   var anchor = document.querySelector('.article-footer-nav') || document.querySelector('.article');
@@ -24,6 +25,9 @@ var CMT_API = 'http://localhost:3456';
   }
 
   function api(path, method, body, withSid) {
+    if (!CMT_API) {
+      return Promise.reject(new Error('后端还没连上，稍等一下再试'));
+    }
     var h = { 'Content-Type': 'application/json' };
     if (withSid && who && who.sid) { h['X-Session'] = who.sid; }
     return fetch(CMT_API + path, {
@@ -31,6 +35,43 @@ var CMT_API = 'http://localhost:3456';
       headers: h,
       body: body ? JSON.stringify(body) : undefined
     }).then(function (r) { return r.json(); });
+  }
+
+  /* ---------- 地址寻找：挨个敲门，谁应答用谁 ---------- */
+  function probe(base) {
+    var ctrl = ('AbortController' in window) ? new AbortController() : null;
+    var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 4000) : null;
+    return fetch(base + '/api/comments?post=__probe', { cache: 'no-store', signal: ctrl ? ctrl.signal : undefined })
+      .then(function (r) {
+        if (timer) { clearTimeout(timer); }
+        if (!r.ok) { throw new Error('no'); }
+        return r.json();
+      })
+      .then(function () {
+        CMT_API = base;
+        try { sessionStorage.setItem('jd_api_base', base); } catch (e) {}
+        return base;
+      });
+  }
+
+  function findBase() {
+    var cached = '';
+    try { cached = sessionStorage.getItem('jd_api_base') || ''; } catch (e) {}
+    /* 仓库里的 tunnel.json 记着当前隧道地址（手机走的路） */
+    return fetch('https://jxjbdn.github.io/tunnel.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .catch(function () { return null; })
+      .then(function (tj) {
+        var cands = [];
+        if (cached) { cands.push(cached); }
+        if (tj && tj.tunnel && cands.indexOf(tj.tunnel) === -1) { cands.push(tj.tunnel); }
+        if (cands.indexOf('http://localhost:3456') === -1) { cands.push('http://localhost:3456'); }
+        var chain = Promise.reject();
+        cands.forEach(function (b) {
+          chain = chain.catch(function () { return probe(b); });
+        });
+        return chain;
+      });
   }
 
   /* ---------- 界面骨架 ---------- */
@@ -167,5 +208,5 @@ var CMT_API = 'http://localhost:3456';
   });
 
   renderUserbar();
-  loadComments();
+  findBase().then(loadComments, function () { loadComments(); });
 })();
