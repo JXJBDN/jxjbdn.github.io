@@ -37,12 +37,19 @@ var CMT_API = 'http://localhost:3456';
   var box = document.createElement('section');
   box.className = 'cmt-box';
   box.innerHTML =
-    '<h2 class="cmt-title">评论<span class="cmt-count" id="cmtCount"></span></h2>' +
+    '<div class="cmt-head">' +
+    '  <span class="cmt-seal">评</span>' +
+    '  <div class="cmt-headtxt"><h2 class="cmt-title">评论区</h2>' +
+    '  <span class="cmt-sub">路过的人，留下两句话吧</span></div>' +
+    '  <span class="cmt-count" id="cmtCount"></span>' +
+    '</div>' +
     '<div class="cmt-list" id="cmtList"><span class="cmt-loading">评论加载中……</span></div>' +
     '<div class="cmt-form">' +
     '  <div class="cmt-userbar" id="cmtUserbar"></div>' +
-    '  <textarea id="cmtText" rows="3" maxlength="500" placeholder="说点什么……（500 字以内）"></textarea>' +
-    '  <div class="cmt-actions"><span class="cmt-msg" id="cmtMsg"></span><button type="button" class="cmt-btn" id="cmtSend">发表评论</button></div>' +
+    '  <div class="cmt-editor">' +
+    '    <textarea id="cmtText" rows="3" maxlength="500" placeholder="说点什么……（500 字以内）"></textarea>' +
+    '    <div class="cmt-actions"><span class="cmt-msg" id="cmtMsg"></span><span class="cmt-hint" id="cmtLen">0 / 500</span><button type="button" class="cmt-btn" id="cmtSend">发表评论</button></div>' +
+    '  </div>' +
     '</div>' +
     '<p class="cmt-note">评论区连着站长的学习后端——后端开机时这里热闹，没开机时这里安静。</p>';
   anchor.parentNode.insertBefore(box, anchor);
@@ -51,13 +58,19 @@ var CMT_API = 'http://localhost:3456';
   var count = box.querySelector('#cmtCount');
   var userbar = box.querySelector('#cmtUserbar');
   var msg = box.querySelector('#cmtMsg');
+  var txt = box.querySelector('#cmtText');
+  var lenHint = box.querySelector('#cmtLen');
+
+  txt.addEventListener('input', function () {
+    lenHint.textContent = txt.value.length + ' / 500';
+  });
 
   /* ---------- 登录条：已登录显示身份，未登录显示迷你登录框 ---------- */
   function renderUserbar() {
     if (who && who.nick) {
       userbar.innerHTML =
-        '<span class="cmt-avatar">' + esc(who.nick.charAt(0)) + '</span>' +
-        '<b>' + esc(who.nick) + '</b><span class="cmt-hello">，来说两句</span>' +
+        '<span class="cmt-avatar cmt-avatar-lg">' + esc(who.nick.charAt(0)) + '</span>' +
+        '<div class="cmt-who"><b>' + esc(who.nick) + '</b><span class="cmt-hello">，来说两句</span></div>' +
         '<button type="button" class="cmt-logout" id="cmtLogout">退出</button>';
       userbar.querySelector('#cmtLogout').addEventListener('click', function () {
         api('/api/logout', 'POST', {}, true).catch(function () {});
@@ -67,11 +80,13 @@ var CMT_API = 'http://localhost:3456';
       });
     } else {
       userbar.innerHTML =
-        '<span class="cmt-hello">评论前先登录（账号在你的后端注册）</span>' +
+        '<span class="cmt-hello cmt-login-tip">评论前先登录（账号在你后端注册，注册即自动登录）</span>' +
+        '<div class="cmt-login-row">' +
         '<input type="text" id="cmtName" placeholder="用户名" autocomplete="username">' +
         '<input type="password" id="cmtPass" placeholder="密码" autocomplete="current-password">' +
         '<button type="button" class="cmt-btn cmt-btn-sm" id="cmtLogin">登录</button>' +
-        '<button type="button" class="cmt-btn cmt-btn-ghost" id="cmtReg">注册</button>';
+        '<button type="button" class="cmt-btn cmt-btn-ghost" id="cmtReg">注册</button>' +
+        '</div>';
       userbar.querySelector('#cmtLogin').addEventListener('click', function () { doLogin(false); });
       userbar.querySelector('#cmtReg').addEventListener('click', function () { doLogin(true); });
     }
@@ -110,7 +125,7 @@ var CMT_API = 'http://localhost:3456';
       count.textContent = '';
       return;
     }
-    count.textContent = ' · ' + items.length + ' 条';
+    count.textContent = items.length ? items.length + ' 条' : '';
     if (!items.length) {
       list.innerHTML = '<p class="cmt-offline">还没有评论，坐个沙发？</p>';
       return;
@@ -120,9 +135,11 @@ var CMT_API = 'http://localhost:3456';
       item.className = 'cmt-item';
       item.innerHTML =
         '<span class="cmt-avatar">' + esc(String(c.nick || '友').charAt(0)) + '</span>' +
-        '<div class="cmt-body"><div class="cmt-head"><b>' + esc(c.nick) + '</b>' +
+        '<div class="cmt-body"><div class="cmt-bubble">' +
+        '<div class="cmt-head"><b>' + esc(c.nick) + '</b>' +
         '<span class="cmt-time">' + esc(c.created) + '</span></div>' +
-        '<p class="cmt-text">' + esc(c.text).replace(/\n/g, '<br>') + '</p></div>';
+        '<p class="cmt-text">' + esc(c.text).replace(/\n/g, '<br>') + '</p>' +
+        '</div></div>';
       list.appendChild(item);
     });
   }
