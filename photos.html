@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>相册 · 就像戒不掉你</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="index.html">
+      <span class="brand-mark"><img src="logo.jpg" alt="就像戒不掉你"></span>
+      <span class="brand-name">就像戒不掉你</span>
+    </a>
+    <nav class="main-nav">
+      <a href="index.html" class="nav-link">首页</a>
+      <a href="blog.html" class="nav-link">日记</a>
+      <a href="photos.html" class="nav-link nav-now">相册</a>
+      <span class="nav-link nav-off">留言板<span class="mini-badge">未开放</span></span>
+      <a href="about.html" class="nav-link">关于作者</a>
+    </nav>
+    <div class="header-actions">
+      <span class="search-off" title="搜索 · 未开放">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+      </span>
+      <a href="edit.html" class="btn-upload">＋ 上传日记</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="photos-wrap">
+
+    <section class="editor-hero">
+      <div class="ed-date">相册 · 生活的碎片</div>
+      <h1>日记里的图，都住在这里</h1>
+      <p>写日记时插入的图片会自动收进相册</p>
+    </section>
+
+    <div class="photos-grid" id="photosGrid"></div>
+    <div class="photos-empty" id="photosEmpty" hidden>
+      相册还空着——去写一篇带图片的日记，照片就会出现在这里。
+    </div>
+
+  </div>
+</main>
+
+<footer class="site-footer">
+  <p>暂无备案号等信息<span class="dot">·</span>住在 GitHub Pages<span class="dot">·</span>始于 2026.08.18</p>
+</footer>
+
+<div class="lightbox" id="lightbox"><img id="lightboxImg" src="" alt=""></div>
+
+<script>
+  fetch('gallery.json?t=' + Date.now(), { cache: 'no-store' })
+    .then(function (r) {
+      if (!r.ok) { throw new Error('还没有相册数据'); }
+      return r.json();
+    })
+    .then(function (obj) {
+      var items = (obj && Array.isArray(obj.items)) ? obj.items : [];
+      var grid = document.getElementById('photosGrid');
+      if (!items.length) {
+        document.getElementById('photosEmpty').hidden = false;
+        return;
+      }
+      var box = document.getElementById('lightbox');
+      var boxImg = document.getElementById('lightboxImg');
+      items.forEach(function (it) {
+        var card = document.createElement('div');
+        card.className = 'photo-card';
+        card.innerHTML =
+          '<img src="' + it.src + '" alt="' + (it.title || '').replace(/"/g, '&quot;') + '" loading="lazy">' +
+          '<div class="photo-cap"><b>《' + (it.title || '无题') + '》</b>' +
+          '<span>' + (it.wroteAt || '') + '</span>' +
+          (it.post ? '<a href="' + it.post + '">来自这篇日记 →</a>' : '') +
+          '</div>';
+        card.querySelector('img').addEventListener('click', function () {
+          boxImg.src = it.src;
+          box.classList.add('open');
+        });
+        grid.appendChild(card);
+      });
+      box.addEventListener('click', function () {
+        box.classList.remove('open');
+        boxImg.src = '';
+      });
+    })
+    .catch(function () {
+      document.getElementById('photosEmpty').hidden = false;
+    });
+</script>
+
+</body>
+</html>

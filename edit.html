@@ -18,7 +18,7 @@
     <nav class="main-nav">
       <a href="index.html" class="nav-link">首页</a>
       <a href="blog.html" class="nav-link">日记</a>
-      <span class="nav-link nav-off">相册<span class="mini-badge">未开放</span></span>
+      <a href="photos.html" class="nav-link">相册</a>
       <span class="nav-link nav-off">留言板<span class="mini-badge">未开放</span></span>
       <a href="about.html" class="nav-link">关于作者</a>
     </nav>
@@ -82,7 +82,13 @@
         </div>
 
         <div class="field field-body">
+          <div class="img-toolbar">
+            <button type="button" class="btn-ins-img" id="insertImgBtn">＋ 插入图片</button>
+            <span class="opt">图片插到光标处，发布后自动同步进「相册」</span>
+            <input type="file" id="imgInput" accept="image/*" multiple hidden>
+          </div>
           <textarea id="contentInput" class="paper-lines" placeholder="想写什么都行……&#10;&#10;像在稿纸上写字一样，段落之间空一行。"></textarea>
+          <div class="img-strip" id="imgStrip" hidden></div>
           <div class="ed-meta">
             <span>空一行 = 分一段</span>
             <span id="wordCount">0 字</span>
@@ -100,6 +106,15 @@
           <span class="draft-hint" id="draftHint">草稿会自动保存在本机</span>
         </div>
         <div class="edit-status" id="statusBox"></div>
+      </div>
+
+      <!-- 标签管理：删除 / 排序 -->
+      <div class="tag-mgr-card">
+        <details>
+          <summary>整理标签（删除 · 排序）</summary>
+          <p class="setup-tip">改动会立即写回网站的首页和日记页标签栏，约 1 分钟后线上生效。删除标签不影响文章本身。</p>
+          <div id="tagMgrList" class="tag-mgr-list"><span class="setup-tip">载入中……</span></div>
+        </details>
       </div>
     </div>
 
@@ -123,13 +138,12 @@
   /* 日期抬头 */
   (function () {
     var d = new Date();
-    var pad = function (n) { return (n < 10 ? '0' : '') + n; };
     var week = ['日', '一', '二', '三', '四', '五', '六'][d.getDay()];
     document.getElementById('edDate').textContent =
       d.getFullYear() + ' 年 ' + (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日 · 星期' + week;
   })();
 
-  /* 草稿：自动保存到本机，刷新不丢 */
+  /* 草稿：自动保存到本机，刷新不丢（图片不入草稿，标记会保留） */
   function saveDraft() {
     localStorage.setItem('jd_draft', JSON.stringify({
       t: titleInput.value, s: subtitleInput.value, c: contentInput.value
@@ -155,12 +169,111 @@
     el.addEventListener('input', function () { updateCount(); saveDraft(); });
   });
 
+  /* ---------- 图片插入 ---------- */
+  var pendingImages = [];
+  var imgSeq = 0;
+
+  function insertAtCursor(ta, text) {
+    var s = ta.selectionStart, e = ta.selectionEnd;
+    ta.value = ta.value.slice(0, s) + text + ta.value.slice(e);
+    ta.selectionStart = ta.selectionEnd = s + text.length;
+    ta.focus();
+    updateCount(); saveDraft();
+  }
+
+  /* 本地压缩：长边缩到 1600px、JPEG 85%，GIF 原样保留 */
+  function processImageFile(file) {
+    return new Promise(function (resolve, reject) {
+      if (file.type === 'image/gif') {
+        if (file.size > 8 * 1024 * 1024) { reject(new Error('GIF 太大（超过 8MB）')); return; }
+        var gr = new FileReader();
+        gr.onload = function () { resolve({ b64: gr.result, ext: 'gif' }); };
+        gr.onerror = function () { reject(new Error('读取失败')); };
+        gr.readAsDataURL(file);
+        return;
+      }
+      var reader = new FileReader();
+      reader.onload = function () {
+        var img = new Image();
+        img.onload = function () {
+          try {
+            var MAX = 1600;
+            var scale = Math.min(1, MAX / Math.max(img.width, img.height));
+            var canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(img.width * scale));
+            canvas.height = Math.max(1, Math.round(img.height * scale));
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob(function (blob) {
+              if (!blob) { reject(new Error('压缩失败')); return; }
+              var br = new FileReader();
+              br.onload = function () { resolve({ b64: br.result, ext: 'jpg' }); };
+              br.onerror = function () { reject(new Error('压缩后读取失败')); };
+              br.readAsDataURL(blob);
+            }, 'image/jpeg', 0.85);
+          } catch (err) { reject(err); }
+        };
+        img.onerror = function () { reject(new Error('这不是一张能识别的图片')); };
+        img.src = reader.result;
+      };
+      reader.onerror = function () { reject(new Error('读取失败')); };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function renderImgStrip() {
+    var strip = document.getElementById('imgStrip');
+    strip.hidden = pendingImages.length === 0;
+    strip.innerHTML = '';
+    pendingImages.forEach(function (p, i) {
+      var d = document.createElement('div');
+      d.className = 'img-thumb';
+      d.innerHTML = '<img src="' + p.b64 + '"><button type="button" class="img-x" title="移除">×</button><span>[' + p.marker + ']</span>';
+      d.querySelector('.img-x').addEventListener('click', function () {
+        var re = new RegExp('\\n*\\[' + p.marker + '\\]\\n*', 'g');
+        contentInput.value = contentInput.value.replace(re, '\n\n');
+        pendingImages.splice(i, 1);
+        renderImgStrip(); updateCount(); saveDraft();
+      });
+      strip.appendChild(d);
+    });
+  }
+
+  document.getElementById('insertImgBtn').addEventListener('click', function () {
+    document.getElementById('imgInput').click();
+  });
+
+  document.getElementById('imgInput').addEventListener('change', function () {
+    var files = Array.prototype.slice.call(this.files || []);
+    this.value = '';
+    if (!files.length) { return; }
+    draftHint.textContent = '正在处理图片……';
+    var chain = Promise.resolve();
+    files.forEach(function (f) {
+      chain = chain.then(function () {
+        return processImageFile(f).then(function (r) {
+          imgSeq++;
+          var marker = '图' + imgSeq;
+          insertAtCursor(contentInput, '\n\n[' + marker + ']\n\n');
+          pendingImages.push({ marker: marker, b64: r.b64, ext: r.ext });
+          renderImgStrip();
+          draftHint.textContent = '草稿会自动保存在本机';
+        });
+      });
+    });
+    chain.catch(function (e) {
+      alert('图片处理失败：' + (e && e.message ? e.message : e));
+      draftHint.textContent = '草稿会自动保存在本机';
+    });
+  });
+
+  /* ---------- 标签同步与管理 ---------- */
   function enterEditMode() {
     setupCard.hidden = true;
     editForm.hidden = false;
     restoreDraft();
     updateCount();
     loadTags();
+    renderTagMgr();
   }
 
   function loadTags() {
@@ -183,6 +296,49 @@
     });
   }
 
+  function renderTagMgr() {
+    var box = document.getElementById('tagMgrList');
+    JD.fetchTags().then(function (tags) {
+      box.innerHTML = '';
+      if (!tags.length) {
+        box.innerHTML = '<span class="setup-tip">还没有标签，写日记时就会有了</span>';
+        return;
+      }
+      tags.forEach(function (t, i) {
+        var row = document.createElement('div');
+        row.className = 'tag-mgr-row';
+        row.innerHTML = '<span class="mgr-name">#' + JD.esc(t) + '</span>' +
+          '<span class="mgr-btns">' +
+          '<button type="button" data-act="up"' + (i === 0 ? ' disabled' : '') + '>↑ 上移</button>' +
+          '<button type="button" data-act="down"' + (i === tags.length - 1 ? ' disabled' : '') + '>↓ 下移</button>' +
+          '<button type="button" data-act="del" class="mgr-del">删除</button></span>';
+        row.querySelectorAll('button').forEach(function (b) {
+          b.addEventListener('click', function () {
+            var act = b.dataset.act;
+            if (act === 'del' &&
+                !confirm('删除标签「' + t + '」？\n两个页面的标签栏和卡片引用会同步移除，文章本身不受影响。')) {
+              return;
+            }
+            row.querySelectorAll('button').forEach(function (x) { x.disabled = true; });
+            var op = act === 'del'
+              ? JD.removeTag(t)
+              : JD.moveTag(t, act === 'up' ? -1 : 1);
+            op.then(function () {
+              alert('已更新，约 1 分钟后线上生效');
+              location.reload();
+            }).catch(function (e) {
+              alert('失败：' + e.message);
+              renderTagMgr();
+            });
+          });
+        });
+        box.appendChild(row);
+      });
+    }).catch(function (e) {
+      box.innerHTML = '<span class="setup-tip">载入失败：' + JD.esc(e.message) + '</span>';
+    });
+  }
+
   document.getElementById('saveTokenBtn').addEventListener('click', function () {
     var btn = this;
     var owner = document.getElementById('ownerInput').value.trim();
@@ -202,6 +358,7 @@
     });
   });
 
+  /* ---------- 发布 ---------- */
   document.getElementById('publishBtn').addEventListener('click', function () {
     var btn = this;
     var title = titleInput.value.trim();
@@ -221,23 +378,71 @@
     });
     if (tags.length === 0) { st.textContent = '至少选一个标签（或写一个新标签）'; return; }
 
+    /* 图片标记与待传图片必须一一对应 */
+    var txtMarkers = (content.match(/\[图\d+\]/g) || []).map(function (s) { return s.slice(1, -1); });
+    var pendMarkers = pendingImages.map(function (p) { return p.marker; });
+    var missing = txtMarkers.filter(function (m) { return pendMarkers.indexOf(m) === -1; });
+    var orphan = pendMarkers.filter(function (m) { return txtMarkers.indexOf(m) === -1; });
+    if (missing.length || orphan.length) {
+      var msgs = [];
+      if (missing.length) {
+        msgs.push('正文里的 [' + missing.join('] [') + '] 没有对应图片（刷新过页面图片不会保留，请删掉标记或重新插图）');
+      }
+      if (orphan.length) {
+        msgs.push('[' + orphan.join('] [') + '] 的图片没有插进正文（缩略图上点 × 可移除）');
+      }
+      st.textContent = msgs.join('；');
+      return;
+    }
+
     btn.disabled = true;
     st.className = 'edit-status';
-    st.textContent = '正在发布……会连续提交 3 个文件，请别关闭页面';
-    JD.publishPost({ title: title, subtitle: subtitle, content: content, tags: tags })
+
+    function uploadImages() {
+      var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+      var d = new Date();
+      var stamp = '' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) +
+        '-' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
+      var uploaded = [];
+      return new Promise(function (resolve, reject) {
+        (function next(i) {
+          if (i >= pendingImages.length) { resolve(uploaded); return; }
+          var p = pendingImages[i];
+          var path = 'images/' + stamp + '-' + (i + 1) + '.' + p.ext;
+          st.textContent = '正在上传图片 ' + (i + 1) + '/' + pendingImages.length + '……';
+          JD.put(path, p.b64, '上传图片：' + path, true).then(function () {
+            uploaded.push({ marker: p.marker, path: path });
+            next(i + 1);
+          }).catch(reject);
+        })(0);
+      });
+    }
+
+    uploadImages()
+      .then(function (images) {
+        st.textContent = images.length
+          ? '图片上传完成，正在提交日记……'
+          : '正在发布……会连续提交 3 个文件，请别关闭页面';
+        return JD.publishPost({ title: title, subtitle: subtitle, content: content, tags: tags, images: images });
+      })
       .then(function (d) {
         localStorage.removeItem('jd_draft');
         draftHint.textContent = '草稿会自动保存在本机';
+        pendingImages = [];
+        renderImgStrip();
         st.className = 'edit-status ed-done';
-        st.innerHTML = '发布成功！<b>' + JD.esc(d.title) + '</b> 已提交。<br>' +
+        st.innerHTML = '发布成功！<b>' + JD.esc(d.title) + '</b> 已提交（写于 ' + d.wroteAt + '）。<br>' +
           'GitHub Pages 需要约 1 分钟构建，之后：<br>' +
           '<a href="' + d.file + '" target="_blank">查看这篇日记</a> · ' +
-          '<a href="index.html" target="_blank">回首页看效果</a>（刚构建完可能要按 Ctrl+F5 刷新）';
+          '<a href="photos.html" target="_blank">看看相册</a> · ' +
+          '<a href="index.html" target="_blank">回首页</a>（刚构建完可能要按 Ctrl+F5 刷新）';
         titleInput.value = '';
         subtitleInput.value = '';
         contentInput.value = '';
+        document.getElementById('newTagInput').value = '';
         updateCount();
         loadTags();
+        renderTagMgr();
       })
       .catch(function (e) {
         st.className = 'edit-status';

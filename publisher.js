@@ -52,16 +52,21 @@ var JD = {
       });
   },
 
-  /* PUT：把新内容提交回仓库（新建文件不需要 sha，覆盖文件要带上） */
-  put: function (path, text, message) {
+  _textToB64: function (text) {
+    var bytes = new TextEncoder().encode(text);
+    var bin = '';
+    bytes.forEach(function (b) { bin += String.fromCharCode(b); });
+    return btoa(bin);
+  },
+
+  /* PUT：提交文件回仓库。isB64 时 content 传 dataURL（用于图片） */
+  put: function (path, content, message, isB64) {
     var self = this;
     return this.get(path).then(function (g) { return g.sha; })
       .catch(function (e) { if (e.notFound) { return null; } throw e; })
       .then(function (sha) {
-        var bytes = new TextEncoder().encode(text);
-        var bin = '';
-        bytes.forEach(function (b) { bin += String.fromCharCode(b); });
-        var body = { message: message, content: btoa(bin), branch: 'main' };
+        var b64 = isB64 ? content.split(',')[1] : self._textToB64(content);
+        var body = { message: message, content: b64, branch: 'main' };
         if (sha) { body.sha = sha; }
         return fetch(self._url(path), {
           method: 'PUT',
@@ -78,18 +83,40 @@ var JD = {
       });
   },
 
-  /* ---------- 业务操作 ---------- */
+  /* ---------- 标签 ---------- */
 
   /* 从首页标签栏同步现有标签 */
   fetchTags: function () {
     return this.get('index.html').then(function (g) {
-      var tags = [];
+      return JD.readTagBar(g.text);
+    });
+  },
+
+  readTagBar: function (html) {
+    var bar = html.match(/<div class="tag-bar">[\s\S]*?<\/div>/);
+    var tags = [];
+    if (bar) {
       var re = /data-filter="([^"]+)"/g, m;
-      while ((m = re.exec(g.text))) {
+      while ((m = re.exec(bar[0]))) {
         if (m[1] !== '全部') { tags.push(m[1]); }
       }
-      return tags;
+    }
+    return tags;
+  },
+
+  buildTagBar: function (tags) {
+    var lines = ['<div class="tag-bar">',
+      '      <button class="tag active" data-filter="全部">全部</button>'];
+    tags.forEach(function (t) {
+      lines.push('      <button class="tag" data-filter="' + t + '">' + t + '</button>');
     });
+    lines.push('      <button class="tag tag-add" id="addTagBtn" type="button" title="新增分类标签">＋</button>');
+    lines.push('    </div>');
+    return lines.join('\n');
+  },
+
+  replaceTagBar: function (html, tags) {
+    return html.replace(/<div class="tag-bar">[\s\S]*?<\/div>/, this.buildTagBar(tags));
   },
 
   /* 「＋」按钮：往首页和日记页的标签栏末尾插入新标签 */
@@ -98,28 +125,89 @@ var JD = {
     var name = String(rawName || '').trim().replace(/[<>"'\\]/g, '');
     if (!name) { return Promise.reject(new Error('标签名不能为空')); }
     return this.get('index.html').then(function (g) {
-      return self.put('index.html', self.ensureTag(g.text, name), '新增标签：' + name);
-    }).then(function () {
-      return self.get('blog.html');
-    }).then(function (g) {
-      return self.put('blog.html', self.ensureTag(g.text, name), '新增标签：' + name);
+      var tags = self.readTagBar(g.text);
+      if (tags.indexOf(name) > -1) { throw new Error('这个标签已经存在啦'); }
+      tags.push(name);
+      return self._writeTagBars(tags, '新增标签：' + name);
     }).then(function () { return name; });
   },
 
-  ensureTag: function (html, tag) {
-    if (html.indexOf('data-filter="' + tag + '"') > -1) { return html; }
-    var anchor = '<button class="tag tag-add"';
-    if (html.indexOf(anchor) === -1) { return html; }
-    return html.replace(anchor,
-      '<button class="tag" data-filter="' + tag + '">' + tag + '</button>\n      ' + anchor);
+  /* 排序：dir = -1 上移一位，+1 下移一位 */
+  moveTag: function (tag, dir) {
+    var self = this;
+    return this.get('index.html').then(function (g) {
+      var tags = self.readTagBar(g.text);
+      var i = tags.indexOf(tag);
+      if (i === -1) { throw new Error('找不到标签 ' + tag); }
+      var j = i + dir;
+      if (j < 0 || j >= tags.length) { throw new Error('已经在最边上啦'); }
+      tags.splice(j, 0, tags.splice(i, 1)[0]);
+      return self._writeTagBars(tags, '调整标签顺序：' + tag);
+    });
   },
 
-  /* 发布一篇日记：生成文章页 + 更新首页/日记页卡片 */
+  /* 删除：同时清掉两个页面标签栏、卡片 data-tags 和卡片上的标签胶囊 */
+  removeTag: function (tag) {
+    var self = this;
+    return this.get('index.html').then(function (g) {
+      var tags = self.readTagBar(g.text);
+      if (tags.indexOf(tag) === -1) { throw new Error('找不到标签 ' + tag); }
+      tags.splice(tags.indexOf(tag), 1);
+      return Promise.all([self.get('index.html'), self.get('blog.html')]).then(function (fs) {
+        return Promise.all(fs.map(function (f, idx) {
+          var h = f.text;
+          h = self.replaceTagBar(h, tags);
+          h = h.replace(/data-tags="([^"]*)"/g, function (mm, csv) {
+            var list = csv.split(',').filter(function (t) { return t !== tag; });
+            return 'data-tags="' + list.join(',') + '"';
+          });
+          h = h.replace(new RegExp('<span class="chip chip-soft">#' + self._reEsc(tag) + '</span>\\s*', 'g'), '');
+          return self.put(idx === 0 ? 'index.html' : 'blog.html', h, '移除标签：' + tag);
+        }));
+      });
+    });
+  },
+
+  _writeTagBars: function (tags, msg) {
+    var self = this;
+    return Promise.all([this.get('index.html'), this.get('blog.html')]).then(function (fs) {
+      return Promise.all([
+        self.put('index.html', self.replaceTagBar(fs[0].text, tags), msg),
+        self.put('blog.html', self.replaceTagBar(fs[1].text, tags), msg)
+      ]);
+    });
+  },
+
+  _reEsc: function (s) {
+    return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  },
+
+  /* ---------- 相册 ---------- */
+
+  /* newItems: [{src, title, wroteAt, post}] 新照片插到最前 */
+  updateGallery: function (newItems) {
+    var self = this;
+    return this.get('gallery.json').catch(function (e) {
+      if (e.notFound) { return { sha: null, text: '{\n  "items": []\n}' }; }
+      throw e;
+    }).then(function (g) {
+      var obj;
+      try { obj = JSON.parse(g.text); } catch (err) { obj = {}; }
+      if (!Array.isArray(obj.items)) { obj.items = []; }
+      newItems.forEach(function (it) { obj.items.unshift(it); });
+      return self.put('gallery.json', JSON.stringify(obj, null, 2) + '\n', '相册更新：+' + newItems.length + ' 张');
+    });
+  },
+
+  /* ---------- 发布日记 ---------- */
+
   publishPost: function (data) {
     var self = this;
     var pad = function (n) { return (n < 10 ? '0' : '') + n; };
     var now = new Date();
     data.date = now.getFullYear() + '.' + pad(now.getMonth() + 1) + '.' + pad(now.getDate());
+    data.time = pad(now.getHours()) + ':' + pad(now.getMinutes());
+    data.wroteAt = data.date + ' ' + data.time;
 
     var blogText = '';
 
@@ -148,10 +236,26 @@ var JD = {
         return '目前共 ' + (parseInt(num, 10) + 1) + ' 篇';
       });
 
+      var galleryOps = (data.images || []).map(function (img) {
+        return { src: img.path, title: data.title, wroteAt: data.wroteAt, post: data.file };
+      });
+
       return self.put(data.file, self.buildPostPage(data), '新增日记：' + data.title)
         .then(function () { return self.put('index.html', newIndex, '首页更新：' + data.title); })
-        .then(function () { return self.put('blog.html', newBlog, '日记页更新：' + data.title); });
+        .then(function () { return self.put('blog.html', newBlog, '日记页更新：' + data.title); })
+        .then(function () {
+          if (!galleryOps.length) { return null; }
+          return self.updateGallery(galleryOps);
+        });
     }).then(function () { return data; });
+  },
+
+  ensureTag: function (html, tag) {
+    if (html.indexOf('data-filter="' + tag + '"') > -1) { return html; }
+    var anchor = '<button class="tag tag-add"';
+    if (html.indexOf(anchor) === -1) { return html; }
+    return html.replace(anchor,
+      '<button class="tag" data-filter="' + tag + '">' + tag + '</button>\n      ' + anchor);
   },
 
   esc: function (s) {
@@ -164,7 +268,7 @@ var JD = {
     var excerpt = d.subtitle || firstPara.slice(0, 60);
     return '<a class="card-item" data-tags="' + d.tags.join(',') + '" href="' + d.file + '">\n' +
       '        <div class="card-head">\n' +
-      '          <span class="date-stamp">' + d.date + '</span>\n' +
+      '          <span class="date-stamp">' + d.date + ' ' + d.time + '</span>\n' +
       '          <span class="chip chip-soft">#' + this.esc(d.tags[0]) + '</span>\n' +
       '        </div>\n' +
       '        <h3 class="card-title">' + this.esc(d.title) + '</h3>\n' +
@@ -177,17 +281,34 @@ var JD = {
     var chips = d.tags.map(function (t) {
       return '<span class="chip chip-soft">#' + JD.esc(t) + '</span>';
     }).join('\n    ');
-    var paras = d.content.split(/\n\s*\n/).map(function (p) {
-      return '    <p class="body-text">' + JD.esc(p.trim()) + '</p>';
-    }).join('\n\n');
+
+    var imgByMarker = {};
+    (d.images || []).forEach(function (img) { imgByMarker[img.marker] = img; });
+
+    var blocks = [];
+    d.content.split(/\n\s*\n/).forEach(function (raw) {
+      var b = raw.trim();
+      if (!b) { return; }
+      var m = b.match(/^\[(图\d+)\]$/);
+      if (m && imgByMarker[m[1]]) {
+        blocks.push('    <figure class="post-img"><img src="' + imgByMarker[m[1]].path +
+          '" alt="' + JD.esc(d.title) + '" loading="lazy"></figure>');
+      } else {
+        var txt = JD.esc(b).replace(/\[图\d+\]/g, '');
+        if (txt) { blocks.push('    <p class="body-text">' + txt + '</p>'); }
+      }
+    });
+    var paras = blocks.join('\n\n');
+
     var lead = d.subtitle ? '\n    <p class="lead">' + this.esc(d.subtitle) + '</p>' : '';
 
     return POST_TEMPLATE
       .replace(/\{TITLE\}/g, this.esc(d.title))
-      .replace(/\{DATE\}/g, d.date)
+      .replace(/\{DATE\}/g, d.date + ' ' + d.time)
       .replace(/\{CHIPS\}/g, chips)
       .replace(/\{LEAD\}/g, lead)
-      .replace(/\{PARAGRAPHS\}/g, paras);
+      .replace(/\{PARAGRAPHS\}/g, paras)
+      .replace(/\{WROTEAT\}/g, d.wroteAt);
   }
 };
 
@@ -213,7 +334,7 @@ var POST_TEMPLATE = [
   '    <nav class="main-nav">',
   '      <a href="index.html" class="nav-link">首页</a>',
   '      <a href="blog.html" class="nav-link">日记</a>',
-  '      <span class="nav-link nav-off">相册<span class="mini-badge">未开放</span></span>',
+  '      <a href="photos.html" class="nav-link">相册</a>',
   '      <span class="nav-link nav-off">留言板<span class="mini-badge">未开放</span></span>',
   '      <a href="about.html" class="nav-link">关于作者</a>',
   '    </nav>',
@@ -238,9 +359,10 @@ var POST_TEMPLATE = [
   '{PARAGRAPHS}',
   '',
   '    <p class="end-mark">· 完 ·</p>',
+  '    <p class="post-time">写于 {WROTEAT}</p>',
   '    <div class="article-footer-nav">',
   '      <a href="blog.html">← 返回日记列表</a>',
-  '      <a href="about.html">关于作者 →</a>',
+  '      <a href="photos.html">看看相册 →</a>',
   '    </div>',
   '  </article>',
   '</main>',
