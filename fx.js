@@ -164,7 +164,7 @@
 
   /* ---------- 滚动显现 ---------- */
   var SELECTOR =
-    '.page-hero, .profile, .about-section, ' +
+    '.page-hero, .profile, .about-section, .hero-text-zone, ' +
     '.link-card, .photo-card, .editor-hero, .paper, .setup-card, ' +
     '.tag-mgr-card, .cmt-box, .bamboo-strip, .bs-roll, .bz-head, .article > *';
 

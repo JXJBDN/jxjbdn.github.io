@@ -34,14 +34,36 @@
 
 <main>
 
-  <section class="hero">
+  <!-- 首屏：书法 3D 剧场（水墨山水 + 加载失败自动回退静态背景图） -->
+  <section class="hero hero-stage">
+    <div class="hero-ink" aria-hidden="true">
+      <span class="hero-sun"></span>
+      <svg class="hero-mtn mtn-far" viewBox="0 0 1440 320" preserveAspectRatio="none"><path d="M0,220 C120,180 200,120 320,140 C380,150 420,200 520,180 C640,155 700,80 820,95 C900,105 940,170 1050,160 C1160,150 1200,90 1320,110 C1380,120 1420,180 1440,190 L1440,320 L0,320 Z"/></svg>
+      <span class="hero-mist mist-a"></span>
+      <svg class="hero-mtn mtn-mid" viewBox="0 0 1440 280" preserveAspectRatio="none"><path d="M0,240 C90,200 170,150 280,170 C360,185 400,230 500,215 C620,198 680,130 800,150 C880,164 920,220 1030,205 C1140,190 1190,130 1300,148 C1370,160 1410,210 1440,215 L1440,280 L0,280 Z"/></svg>
+      <span class="hero-mist mist-b"></span>
+      <svg class="hero-mtn mtn-near" viewBox="0 0 1440 200" preserveAspectRatio="none"><path d="M0,160 C80,130 160,90 260,105 C340,117 380,150 480,140 C600,128 660,70 780,88 C860,100 900,145 1010,132 C1120,120 1170,70 1280,85 C1360,96 1400,140 1440,145 L1440,200 L0,200 Z"/></svg>
+    </div>
+    <canvas id="heroCanvas" aria-hidden="true"></canvas>
+    <div class="hero-veil" aria-hidden="true"></div>
+    <div class="hero-scroll" aria-hidden="true"><span></span></div>
+  </section>
+
+  <!-- 分界线：首页剧场与纸面正文的「卷轴折痕」 -->
+  <div class="hero-cut" aria-hidden="true">
+    <i class="hero-cut-line"></i>
+    <span class="hero-cut-seal">戒</span>
+    <i class="hero-cut-line"></i>
+  </div>
+
+  <!-- 首屏文字：移出背景剧场，落在纸面上 -->
+  <section class="hero-text-zone">
     <div class="hero-text">
       <p class="hero-kicker">手写日记 · 生活碎片</p>
       <h1 class="hero-title">把生活一点一点<em>写进互联网</em></h1>
       <p class="hero-sub">我是就像戒不掉你。这里是我的个人小站——平常写一些日记等都收在这里。网站完全手工搭建，正在慢慢生长。</p>
       <a class="hero-cta" href="#diary">翻开日记 →</a>
     </div>
-    <div class="hero-scroll" aria-hidden="true"><span></span></div>
   </section>
 
   <div class="wrap paper-zone">
@@ -221,5 +243,10 @@
 
 <script src="announcement.js"></script>
 <script src="fx.js"></script>
+
+<!-- 首屏书法 3D（失败自动回退静态背景，不影响其它内容） -->
+<script src="libs/three.min.js" defer></script>
+<script src="libs/GLTFLoader.js" defer></script>
+<script src="hero3d.js" defer></script>
 </body>
 </html>

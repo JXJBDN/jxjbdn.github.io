@@ -113,44 +113,167 @@ html { background: var(--bg); }
   position: relative;
   min-height: 100vh;
   min-height: 100svh;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
+  overflow: hidden;
 }
-/* 背景挂在 body 上：固定铺满整页，往下滚书法也一直在 */
-.page-home { background: none; }
-.page-home::before {
-  content: "";
-  position: fixed;
+/* 首屏剧场：水墨山水 —— 宣纸留白的天光自上而下微微沉入淡青 */
+.hero-stage {
+  background: linear-gradient(180deg,
+    #f5f2ea 0%, #efede2 46%, #e7e6da 78%, #e2e1d4 100%);
+}
+/* —— 水墨山水图层（SVG 山影 + 流岚 + 朱砂日） —— */
+.hero-ink {
+  position: absolute;
   inset: 0;
-  z-index: -1;
-  background: url('hero.jpg') center 24% / cover no-repeat;
-  animation: pageZoom 26s ease-out both;
+  overflow: hidden;
+  pointer-events: none;
 }
-@keyframes pageZoom {
-  from { transform: scale(1); }
-  to { transform: scale(1.07); }
+.hero-mtn {
+  position: absolute;
+  bottom: -2px;
+  left: -2%;
+  width: 104%;
+}
+.mtn-far {
+  height: 56%;
+  fill: #b6bab0;
+  opacity: 0.5;
+  animation: mtnDrift 52s ease-in-out infinite alternate;
+}
+.mtn-mid {
+  height: 43%;
+  fill: #949a91;
+  opacity: 0.58;
+  animation: mtnDrift 38s ease-in-out infinite alternate-reverse;
+}
+.mtn-near {
+  height: 29%;
+  fill: #6c7269;
+  opacity: 0.68;
+  animation: mtnDrift 30s ease-in-out infinite alternate;
+}
+@keyframes mtnDrift {
+  from { transform: translateX(-0.7%); }
+  to { transform: translateX(0.7%); }
+}
+/* 朱砂小日：水墨留白里的一点印色，呼应印章 */
+.hero-sun {
+  position: absolute;
+  top: 15%;
+  right: 13%;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    rgba(201, 86, 64, 0.7) 0%, rgba(201, 86, 64, 0.3) 52%, rgba(201, 86, 64, 0) 72%);
+  filter: blur(1.2px);
+  animation: sunBreath 9s ease-in-out infinite;
+}
+@keyframes sunBreath {
+  0%, 100% { opacity: 0.72; transform: scale(1); }
+  50% { opacity: 0.95; transform: scale(1.06); }
+}
+/* 山间流岚：横过的柔白雾带 */
+.hero-mist {
+  position: absolute;
+  left: -6%;
+  width: 112%;
+  height: 120px;
+  background: linear-gradient(90deg,
+    transparent, rgba(252, 250, 243, 0.5) 16%, rgba(252, 250, 243, 0.78) 50%, rgba(252, 250, 243, 0.5) 84%, transparent);
+  filter: blur(7px);
+}
+.mist-a { bottom: 33%; animation: mistDrift 27s ease-in-out infinite alternate; }
+.mist-b { bottom: 16%; animation: mistDrift 36s ease-in-out infinite alternate-reverse; }
+@keyframes mistDrift {
+  from { transform: translateX(-2.6%); }
+  to { transform: translateX(2.6%); }
+}
+/* WebGL 回退静态书法照片时，山水层隐藏，避免照片后面叠山影 */
+.hero-stage.is-fallback .hero-ink { display: none; }
+#heroCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  opacity: 0;
+  transition: opacity 1.1s ease;
+}
+.hero-stage.is-ready #heroCanvas { opacity: 1; }
+/* 氛围罩：顶部轻青灰暗角 + 底部渐隐入纸色，与下方内容无缝衔接 */
+.hero-veil {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(66, 78, 88, 0.12), transparent 15%),
+    linear-gradient(0deg, var(--bg) 0%, rgba(245, 240, 232, 0.7) 7%, transparent 26%);
+}
+/* WebGL 不可用 / 模型加载失败：回退静态书法背景图 */
+.hero-stage.is-fallback {
+  background: url('hero.jpg') center 24% / cover no-repeat;
 }
 
-/* 首屏之下的宣纸长卷：半透明纸面浮在书法上，像装裱的立轴 */
+/* —— 分界线：首页剧场与纸面正文之间的「卷轴折痕」 —— */
+.hero-cut {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  max-width: 760px;
+  margin: -1px auto 0;
+  padding: 0 24px;
+  position: relative;
+  z-index: 2;
+}
+.hero-cut-line {
+  flex: 1;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent, rgba(184, 64, 46, 0.55));
+}
+.hero-cut-line:last-child {
+  background: linear-gradient(90deg, rgba(184, 64, 46, 0.55), transparent);
+}
+.hero-cut-seal {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--accent);
+  border-radius: 9px;
+  color: var(--accent);
+  font-family: "Kaiti SC", "STKaiti", "KaiTi", "楷体", "DFKai-SB", serif;
+  font-size: 21px;
+  font-weight: 700;
+  transform: rotate(-4deg);
+  background: rgba(255, 253, 247, 0.9);
+  box-shadow: inset 0 0 0 1.5px rgba(184, 64, 46, 0.22), 0 3px 10px rgba(147, 41, 26, 0.16);
+}
+
+/* —— 首屏文字：移出剧场，落在纸面上 —— */
+.hero-text-zone {
+  position: relative;
+  padding: 58px 24px 8px;
+}
+.hero-text-zone .hero-text {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0;
+}
+
+/* 首屏之下的宣纸长卷：纸面正式开始 */
 .paper-zone {
   position: relative;
   border-radius: 26px 26px 0 0;
   padding-top: 42px;
-  background: linear-gradient(180deg, rgba(245, 240, 232, 0.88), rgba(245, 240, 232, 0.97) 180px);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  box-shadow: 0 -16px 48px rgba(60, 44, 26, 0.13);
+  background: linear-gradient(180deg, rgba(255, 253, 247, 0.5), rgba(255, 253, 247, 0) 180px);
+  box-shadow: 0 -16px 48px rgba(60, 44, 26, 0.1);
 }
 .page-home .site-footer { border-top: 1px solid var(--line); }
-
-.hero-text {
-  position: relative;
-  z-index: 1;
-  text-align: center;
-  padding: 0 24px 88px;
-  max-width: 720px;
-}
 
 .hero-title {
   font-size: clamp(30px, 5vw, 52px);
@@ -382,14 +505,7 @@ html { background: var(--bg); }
 }
 .site-footer .dot { color: var(--accent); margin: 0 8px; }
 
-/* ============ 进场动画（卡片滚动显现改由 fx.js 驱动） ============ */
-.hero-text > * { animation: heroRise 0.8s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
-.hero-text > *:nth-child(2) { animation-delay: 0.14s; }
-.hero-text > *:nth-child(3) { animation-delay: 0.28s; }
-.hero-text > *:nth-child(4) { animation-delay: 0.42s; }
-@keyframes heroRise {
-  from { opacity: 0; transform: translateY(16px); filter: blur(3px); }
-}
+/* ============ 进场动画（首屏文字滚动显现由 fx.js 驱动） ============ */
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -783,8 +899,14 @@ html { background: var(--bg); }
   .header-inner { padding: 12px 16px; gap: 12px; flex-wrap: wrap; }
   .header-actions { margin-left: 0; }
   .wrap, .article, .about-wrap { padding-left: 18px; padding-right: 18px; }
-  .page-home::before { background-position: center 18%; }
-  .hero-text { padding-bottom: 48px; }
+  .hero-stage.is-fallback { background-position: center 18%; }
+  .hero-text-zone { padding-top: 44px; }
+  .hero-cut-seal { width: 38px; height: 38px; font-size: 18px; }
+  .mtn-far { height: 42%; }
+  .mtn-mid { height: 34%; }
+  .mtn-near { height: 23%; }
+  .hero-sun { top: 11%; right: 9%; width: 50px; height: 50px; }
+  .hero-mist { height: 82px; }
   .paper-zone { border-radius: 18px 18px 0 0; padding-top: 28px; }
   .cards { grid-template-columns: 1fr; padding-bottom: 56px; }
   .profile { flex-direction: column; text-align: center; }
@@ -1549,7 +1671,7 @@ body.bs-open .bamboo-zone {
   transform: scale(0.985);
   transition: opacity 0.45s ease, transform 0.45s ease;
 }
-.page-home.bs-open::before { opacity: 0; transition: opacity 0.5s ease; }
+.page-home.bs-open .hero-stage { opacity: 0; transition: opacity 0.5s ease; }
 
 .bs-veil {
   position: fixed;
