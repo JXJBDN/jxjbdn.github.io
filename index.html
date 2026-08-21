@@ -7,7 +7,7 @@
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="page-home">
 
 <header class="site-header">
   <div class="header-inner">
@@ -20,6 +20,7 @@
       <a href="blog.html" class="nav-link">日记</a>
       <a href="photos.html" class="nav-link">相册</a>
       <span class="nav-link nav-off">留言板<span class="mini-badge">未开放</span></span>
+      <a href="links.html" class="nav-link">友链</a>
       <a href="about.html" class="nav-link">关于作者</a>
     </nav>
     <div class="header-actions">
@@ -32,14 +33,18 @@
 </header>
 
 <main>
-  <div class="wrap">
 
-    <section class="hero">
-      <div class="hero-text">
-        <h1 class="hero-title">把生活一点一点<em>写进互联网</em></h1>
-        <p class="hero-sub">我是就像戒不掉你。这里是我的个人小站——平常写一些日记等都收在这里。网站完全手工搭建，正在慢慢生长。</p>
-      </div>
-    </section>
+  <section class="hero">
+    <div class="hero-text">
+      <p class="hero-kicker">手写日记 · 生活碎片</p>
+      <h1 class="hero-title">把生活一点一点<em>写进互联网</em></h1>
+      <p class="hero-sub">我是就像戒不掉你。这里是我的个人小站——平常写一些日记等都收在这里。网站完全手工搭建，正在慢慢生长。</p>
+      <a class="hero-cta" href="#diary">翻开日记 →</a>
+    </div>
+    <div class="hero-scroll" aria-hidden="true"><span></span></div>
+  </section>
+
+  <div class="wrap paper-zone">
 
     <div class="tag-bar">
       <button class="tag active" data-filter="全部">全部</button>
@@ -48,103 +53,131 @@
       <button class="tag tag-add" id="addTagBtn" type="button" title="新增分类标签">＋</button>
     </div>
 
-    <section class="cards">
-
-      <a class="card-item" data-tags="网站更新日志" href="post-3.html">
-        <div class="card-head">
-          <span class="date-stamp">2026.08.20 12:12</span>
-          <span class="chip chip-soft">#网站更新日志</span>
-        </div>
-        <h3 class="card-title">网站内容更新日志2026.8.20</h3>
-        <p class="card-excerpt">2026.8.20 中午白天</p>
-        <span class="read-more">阅读全文 →</span>
-      </a>
-
-
-      <a class="card-item" data-tags="网站更新日志" href="post-2.html">
-        <div class="card-head">
-          <span class="date-stamp">2026.08.20</span>
-          <span class="chip chip-soft">#网站更新日志</span>
-        </div>
-        <h3 class="card-title">网站更新日志 2026.8.20</h3>
-        <p class="card-excerpt">时间：2026.8.20</p>
-        <span class="read-more">阅读全文 →</span>
-      </a>
-
-      <div class="card-item card-glow" data-tags="网站初期草稿">
-        <div class="card-head">
-          <span class="chip">NOW PLAYING</span>
-          <span class="chip chip-soft">#网站初期草稿</span>
-        </div>
-        <p class="song">《这叫爱》</p>
-        <p class="lyric">「他们说，这就叫爱」</p>
+    <section class="bamboo-zone" id="diary">
+      <div class="bz-head">
+        <h2>竹上日记</h2>
+        <span class="bz-hint">停在竹简上，金字在卷轴上方浮现 · 往右展开长卷</span>
       </div>
+      <div class="bs-stage">
+        <div class="bamboo-scroll">
+          <div class="bs-track">
 
-      <a class="card-item" data-tags="网站初期草稿" href="post-1.html">
-        <div class="card-head">
-          <span class="date-stamp">2026.08.18</span>
-          <span class="chip chip-soft">#网站初期草稿</span>
-        </div>
-        <h3 class="card-title">我的网站出生了</h3>
-        <p class="card-excerpt">从 VSCode 里一个随便写的 HTML 文件，到 GitHub 上一个真实的网址——一个完全不会代码的人，是怎么拥有自己网站的。</p>
-        <span class="read-more">阅读全文 →</span>
-      </a>
+            <div class="bs-roll">
+              <span class="bs-roll-tie"></span><span class="bs-roll-tie"></span>
+              <b class="bs-roll-name">竹简卷</b>
+            </div><!-- 新日记从这里展开 -->
 
-      <div class="card-item" data-tags="网站初期草稿">
-        <div class="card-head">
-          <span class="chip chip-soft">#网站初期草稿</span>
-        </div>
-        <h3 class="card-title">随手记</h3>
-        <ul class="notes">
-          <li>咋整啊</li>
-          <li>关系复原胶</li>
-          <li>阿巴流星人</li>
-          <li>神奇阿哟</li>
-        </ul>
-      </div>
+            <a class="bamboo-strip" data-tags="网站更新日志" href="posts/post-4.html">
+            <span class="date-stamp">2026.08.20 13:43</span>
+            <span class="bs-title">更新日志</span>
+            <span class="bs-pop">
+              <b>更新日志</b>
+              <span class="chip chip-soft">#网站更新日志</span>
+              <p>2026.8.20</p>
+              <em>展开此简 →</em>
+            </span>
+          </a>
 
-      <div class="card-item" data-tags="网站初期草稿">
-        <div class="card-head">
-          <span class="date-stamp">2026.08.18</span>
-          <span class="chip chip-soft">#网站初期草稿</span>
-        </div>
-        <h3 class="card-title">网站出生这天</h3>
-        <p class="card-excerpt">从写下一个 HTML 文件，到刷新浏览器看到自己的页面出现在互联网上——互联网从此有了一块属于我的地方。</p>
-      </div>
+          <a class="bamboo-strip" data-tags="网站更新日志" href="posts/post-3.html">
+            <span class="date-stamp">2026.08.20 12:12</span>
+            <span class="bs-title">网站内容更新日志2026.8.20</span>
+            <span class="bs-pop">
+              <b>网站内容更新日志2026.8.20</b>
+              <span class="chip chip-soft">#网站更新日志</span>
+              <p>2026.8.20 中午白天</p>
+              <em>展开此简 →</em>
+            </span>
+          </a>
 
-      <a class="card-item" data-tags="关于" href="about.html">
-        <div class="about-mini">
-          <div class="avatar">
-            <img src="avatar.jpg" alt="张家硕的头像" onerror="this.remove()">
-            <span>硕</span>
+          <a class="bamboo-strip" data-tags="网站更新日志" href="posts/post-2.html">
+            <span class="date-stamp">2026.08.20</span>
+            <span class="bs-title">网站更新日志 2026.8.20</span>
+            <span class="bs-pop">
+              <b>网站更新日志 2026.8.20</b>
+              <span class="chip chip-soft">#网站更新日志</span>
+              <p>时间：2026.8.20</p>
+              <em>展开此简 →</em>
+            </span>
+          </a>
+
+          <div class="bamboo-strip bs-music" data-tags="网站初期草稿">
+            <span class="date-stamp">NOW PLAYING</span>
+            <span class="bs-title">《这叫爱》</span>
+            <span class="bs-lyric">「他们说，这就叫爱」</span>
+            <span class="bs-pop">
+              <b>《这叫爱》</b>
+              <span class="chip">NOW PLAYING</span>
+              <p>「他们说，这就叫爱」</p>
+              <em>♪ 单曲循环中</em>
+            </span>
           </div>
-          <div>
-            <h3 class="card-title">关于作者</h3>
-            <p class="card-excerpt">这个小站背后的人是谁，为什么想开始记录生活。</p>
-            <span class="read-more">进入 →</span>
+
+          <a class="bamboo-strip" data-tags="网站初期草稿" href="posts/post-1.html">
+            <span class="date-stamp">2026.08.18</span>
+            <span class="bs-title">我的网站出生了</span>
+            <span class="bs-pop">
+              <b>我的网站出生了</b>
+              <span class="chip chip-soft">#网站初期草稿</span>
+              <p>从 VSCode 里一个随便写的 HTML 文件，到 GitHub 上一个真实的网址——一个完全不会代码的人，是怎么拥有自己网站的。</p>
+              <em>展开此简 →</em>
+            </span>
+          </a>
+
+          <div class="bamboo-strip" data-tags="网站初期草稿">
+            <span class="date-stamp">2026.08.18</span>
+            <span class="bs-title">随手记</span>
+            <span class="bs-lyric">咋整啊 · 关系复原胶 · 阿巴流星人 · 神奇阿哟</span>
+            <span class="bs-pop">
+              <b>随手记</b>
+              <span class="chip chip-soft">#网站初期草稿</span>
+              <p>咋整啊 · 关系复原胶 · 阿巴流星人 · 神奇阿哟</p>
+            </span>
+          </div>
+
+          <div class="bamboo-strip" data-tags="网站初期草稿">
+            <span class="date-stamp">2026.08.18</span>
+            <span class="bs-title">网站出生这天</span>
+            <span class="bs-pop">
+              <b>网站出生这天</b>
+              <span class="chip chip-soft">#网站初期草稿</span>
+              <p>从写下一个 HTML 文件，到刷新浏览器看到自己的页面出现在互联网上——互联网从此有了一块属于我的地方。</p>
+            </span>
+          </div>
+
+          <a class="bamboo-strip" data-tags="关于" href="about.html">
+            <span class="date-stamp">ABOUT</span>
+            <span class="bs-title">关于作者</span>
+            <span class="bs-pop">
+              <b>关于作者</b>
+              <span class="chip chip-soft">#关于</span>
+              <p>这个小站背后的人是谁，为什么想开始记录生活。</p>
+              <em>进入 →</em>
+            </span>
+          </a>
+
           </div>
         </div>
-      </a>
-
+        <div class="bs-spirit" aria-hidden="true"></div>
+      </div>
     </section>
+
+    <footer class="site-footer">
+      <p>暂无备案号等信息<span class="dot">·</span>住在 GitHub Pages<span class="dot">·</span>始于 2026.08.18</p>
+    </footer>
 
   </div>
 </main>
 
-<footer class="site-footer">
-  <p>暂无备案号等信息<span class="dot">·</span>住在 GitHub Pages<span class="dot">·</span>始于 2026.08.18</p>
-</footer>
-
 <script>
   var tagBtns = document.querySelectorAll('.tag[data-filter]');
-  var cards = document.querySelectorAll('.card-item');
+  var strips = document.querySelectorAll('.bamboo-strip');
   tagBtns.forEach(function (btn) {
     btn.addEventListener('click', function () {
       tagBtns.forEach(function (b) { b.classList.remove('active'); });
       btn.classList.add('active');
       var f = btn.dataset.filter;
-      cards.forEach(function (card) {
-        card.style.display = (f === '全部' || card.dataset.tags.indexOf(f) > -1) ? '' : 'none';
+      strips.forEach(function (s) {
+        s.style.display = (f === '全部' || s.dataset.tags.indexOf(f) > -1) ? '' : 'none';
       });
     });
   });
@@ -175,5 +208,7 @@
   });
 </script>
 
+<script src="announcement.js"></script>
+<script src="fx.js"></script>
 </body>
 </html>

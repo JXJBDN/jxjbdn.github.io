@@ -20,6 +20,7 @@
       <a href="blog.html" class="nav-link active">日记</a>
       <a href="photos.html" class="nav-link">相册</a>
       <span class="nav-link nav-off">留言板<span class="mini-badge">未开放</span></span>
+      <a href="links.html" class="nav-link">友链</a>
       <a href="about.html" class="nav-link">关于作者</a>
     </nav>
     <div class="header-actions">
@@ -36,7 +37,7 @@
 
     <section class="page-hero">
       <h1>日记</h1>
-      <p>把日子写成文章 · 目前共 3 篇</p>
+      <p>把日子写成文章 · 目前共 4 篇</p>
     </section>
 
     <div class="tag-bar">
@@ -46,44 +47,74 @@
       <button class="tag tag-add" id="addTagBtn" type="button" title="新增分类标签">＋</button>
     </div>
 
-    <section class="cards">
-
-      <a class="card-item" data-tags="网站更新日志" href="post-3.html">
-        <div class="card-head">
-          <span class="date-stamp">2026.08.20 12:12</span>
-          <span class="chip chip-soft">#网站更新日志</span>
-        </div>
-        <h3 class="card-title">网站内容更新日志2026.8.20</h3>
-        <p class="card-excerpt">2026.8.20 中午白天</p>
-        <span class="read-more">阅读全文 →</span>
-      </a>
-
-
-      <a class="card-item" data-tags="网站更新日志" href="post-2.html">
-        <div class="card-head">
-          <span class="date-stamp">2026.08.20</span>
-          <span class="chip chip-soft">#网站更新日志</span>
-        </div>
-        <h3 class="card-title">网站更新日志 2026.8.20</h3>
-        <p class="card-excerpt">时间：2026.8.20</p>
-        <span class="read-more">阅读全文 →</span>
-      </a>
-
-      <a class="card-item" data-tags="网站初期草稿" href="post-1.html">
-        <div class="card-head">
-          <span class="date-stamp">2026.08.18</span>
-          <span class="chip chip-soft">#网站初期草稿</span>
-        </div>
-        <h3 class="card-title">我的网站出生了</h3>
-        <p class="card-excerpt">从 VSCode 里一个随便写的 HTML 文件开始。我本来只是想试试「网页是怎么做出来的」，写了点歌词，写了句「张家硕尝试自制网站」，然后把它传上了 GitHub……</p>
-        <span class="read-more">阅读全文 →</span>
-      </a>
-
-      <div class="card-item card-dashed" data-tags="网站初期草稿">
-        <h3 class="card-title">你的新内容会出现在这里</h3>
-        <p class="card-excerpt">从今天起，这里写你自己想写的 ✎</p>
+    <section class="bamboo-zone">
+      <div class="bz-head">
+        <h2>竹上日记</h2>
+        <span class="bz-hint">停在竹简上，金字在卷轴上方浮现 · 往右展开长卷</span>
       </div>
+      <div class="bs-stage">
+        <div class="bamboo-scroll">
+          <div class="bs-track">
 
+            <div class="bs-roll">
+              <span class="bs-roll-tie"></span><span class="bs-roll-tie"></span>
+              <b class="bs-roll-name">竹简卷</b>
+            </div><!-- 新日记从这里展开 -->
+
+            <a class="bamboo-strip" data-tags="网站更新日志" href="posts/post-4.html">
+            <span class="date-stamp">2026.08.20 13:43</span>
+            <span class="bs-title">更新日志</span>
+            <span class="bs-pop">
+              <b>更新日志</b>
+              <span class="chip chip-soft">#网站更新日志</span>
+              <p>2026.8.20</p>
+              <em>展开此简 →</em>
+            </span>
+          </a>
+
+          <a class="bamboo-strip" data-tags="网站更新日志" href="posts/post-3.html">
+            <span class="date-stamp">2026.08.20 12:12</span>
+            <span class="bs-title">网站内容更新日志2026.8.20</span>
+            <span class="bs-pop">
+              <b>网站内容更新日志2026.8.20</b>
+              <span class="chip chip-soft">#网站更新日志</span>
+              <p>2026.8.20 中午白天</p>
+              <em>展开此简 →</em>
+            </span>
+          </a>
+
+          <a class="bamboo-strip" data-tags="网站更新日志" href="posts/post-2.html">
+            <span class="date-stamp">2026.08.20</span>
+            <span class="bs-title">网站更新日志 2026.8.20</span>
+            <span class="bs-pop">
+              <b>网站更新日志 2026.8.20</b>
+              <span class="chip chip-soft">#网站更新日志</span>
+              <p>时间：2026.8.20</p>
+              <em>展开此简 →</em>
+            </span>
+          </a>
+
+          <a class="bamboo-strip" data-tags="网站初期草稿" href="posts/post-1.html">
+            <span class="date-stamp">2026.08.18</span>
+            <span class="bs-title">我的网站出生了</span>
+            <span class="bs-pop">
+              <b>我的网站出生了</b>
+              <span class="chip chip-soft">#网站初期草稿</span>
+              <p>从 VSCode 里一个随便写的 HTML 文件开始。我本来只是想试试「网页是怎么做出来的」，写了点歌词，写了句「张家硕尝试自制网站」，然后把它传上了 GitHub……</p>
+              <em>展开此简 →</em>
+            </span>
+          </a>
+
+          <div class="bamboo-strip bs-dashed">
+            <span class="date-stamp">NEXT</span>
+            <span class="bs-title">新日记</span>
+            <span class="bs-lyric">将出现在这里</span>
+          </div>
+
+          </div>
+        </div>
+        <div class="bs-spirit" aria-hidden="true"></div>
+      </div>
     </section>
 
   </div>
@@ -95,14 +126,14 @@
 
 <script>
   var tagBtns = document.querySelectorAll('.tag[data-filter]');
-  var cards = document.querySelectorAll('.card-item');
+  var strips = document.querySelectorAll('.bamboo-strip');
   tagBtns.forEach(function (btn) {
     btn.addEventListener('click', function () {
       tagBtns.forEach(function (b) { b.classList.remove('active'); });
       btn.classList.add('active');
       var f = btn.dataset.filter;
-      cards.forEach(function (card) {
-        card.style.display = (f === '全部' || card.dataset.tags.indexOf(f) > -1) ? '' : 'none';
+      strips.forEach(function (s) {
+        s.style.display = (f === '全部' || s.dataset.tags.indexOf(f) > -1) ? '' : 'none';
       });
     });
   });
@@ -133,5 +164,7 @@
   });
 </script>
 
+<script src="announcement.js"></script>
+<script src="fx.js"></script>
 </body>
 </html>

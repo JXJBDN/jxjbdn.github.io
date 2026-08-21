@@ -104,34 +104,51 @@ a { color: var(--accent); }
 
 .search-off { color: var(--off); display: flex; align-items: center; }
 
-/* ============ 首页 Hero：书法背景图 + 底部过渡 ============ */
+/* ============ 首页 Hero：全幅书法背景铺满整个网页 ============ */
 .wrap { max-width: 1160px; margin: 0 auto; padding: 0 28px; }
+
+html { background: var(--bg); }
 
 .hero {
   position: relative;
-  min-height: clamp(430px, 58vh, 640px);
+  min-height: 100vh;
+  min-height: 100svh;
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  background-image: url('hero.jpg');
-  background-size: cover;
-  background-position: center 24%;
 }
-/* 底部宣纸渐隐：图片无缝过渡到页面底色 */
-.hero::after {
+/* 背景挂在 body 上：固定铺满整页，往下滚书法也一直在 */
+.page-home { background: none; }
+.page-home::before {
   content: "";
-  position: absolute;
-  left: 0; right: 0; bottom: 0;
-  height: 46%;
-  background: linear-gradient(to bottom, rgba(245, 240, 232, 0) 0%, rgba(245, 240, 232, 0.55) 55%, #f5f0e8 100%);
-  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: url('hero.jpg') center 24% / cover no-repeat;
+  animation: pageZoom 26s ease-out both;
 }
+@keyframes pageZoom {
+  from { transform: scale(1); }
+  to { transform: scale(1.07); }
+}
+
+/* 首屏之下的宣纸长卷：半透明纸面浮在书法上，像装裱的立轴 */
+.paper-zone {
+  position: relative;
+  border-radius: 26px 26px 0 0;
+  padding-top: 42px;
+  background: linear-gradient(180deg, rgba(245, 240, 232, 0.88), rgba(245, 240, 232, 0.97) 180px);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 -16px 48px rgba(60, 44, 26, 0.13);
+}
+.page-home .site-footer { border-top: 1px solid var(--line); }
 
 .hero-text {
   position: relative;
   z-index: 1;
   text-align: center;
-  padding: 0 24px 30px;
+  padding: 0 24px 88px;
   max-width: 720px;
 }
 
@@ -365,15 +382,13 @@ a { color: var(--accent); }
 }
 .site-footer .dot { color: var(--accent); margin: 0 8px; }
 
-/* ============ 进场动画 ============ */
-.hero-text { animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.3, 1) both; animation-delay: 0.15s; }
-.card-item { animation: rise 0.5s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
-.card-item:nth-child(2) { animation-delay: 0.07s; }
-.card-item:nth-child(3) { animation-delay: 0.14s; }
-.card-item:nth-child(4) { animation-delay: 0.21s; }
-.card-item:nth-child(5) { animation-delay: 0.28s; }
-@keyframes rise {
-  from { opacity: 0; transform: translateY(12px); }
+/* ============ 进场动画（卡片滚动显现改由 fx.js 驱动） ============ */
+.hero-text > * { animation: heroRise 0.8s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+.hero-text > *:nth-child(2) { animation-delay: 0.14s; }
+.hero-text > *:nth-child(3) { animation-delay: 0.28s; }
+.hero-text > *:nth-child(4) { animation-delay: 0.42s; }
+@keyframes heroRise {
+  from { opacity: 0; transform: translateY(16px); filter: blur(3px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -768,8 +783,9 @@ a { color: var(--accent); }
   .header-inner { padding: 12px 16px; gap: 12px; flex-wrap: wrap; }
   .header-actions { margin-left: 0; }
   .wrap, .article, .about-wrap { padding-left: 18px; padding-right: 18px; }
-  .hero { min-height: 400px; background-position: center 18%; }
-  .hero-text { padding-bottom: 22px; }
+  .page-home::before { background-position: center 18%; }
+  .hero-text { padding-bottom: 48px; }
+  .paper-zone { border-radius: 18px 18px 0 0; padding-top: 28px; }
   .cards { grid-template-columns: 1fr; padding-bottom: 56px; }
   .profile { flex-direction: column; text-align: center; }
   .edit-wrap { padding-left: 18px; padding-right: 18px; }
@@ -780,4 +796,813 @@ a { color: var(--accent); }
   .paper-seal { left: 20px; }
   .editor-hero h1 { font-size: 25px; }
   .ed-actions { flex-direction: column; align-items: stretch; text-align: center; }
+}
+
+/* ---------- 视频（日记内 · 缩略图 · 相册） ---------- */
+.post-video { margin: 26px 0; }
+.post-video video {
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: #000;
+  display: block;
+}
+.img-thumb video {
+  width: 88px; height: 88px; object-fit: cover;
+  border-radius: 10px; border: 1px solid var(--line);
+  display: block; background: #000;
+}
+.photo-card video {
+  width: 100%; aspect-ratio: 4 / 3; object-fit: cover;
+  display: block; background: #000;
+}
+
+/* ---------- 相册分栏（图片 / 视频） ---------- */
+.gallery-tabs { margin-top: 30px; }
+
+/* ---------- 友链 ---------- */
+.links-wrap { max-width: 860px; margin: 0 auto; padding: 46px 28px 72px; }
+.links-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; margin-top: 34px; }
+.link-card {
+  display: flex; gap: 14px; align-items: center;
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  padding: 16px 18px; text-decoration: none;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.link-card:hover { transform: translateY(-3px); box-shadow: 0 14px 26px -16px rgba(60, 42, 20, 0.32); }
+.link-avatar {
+  width: 46px; height: 46px; flex: none; border-radius: 50%;
+  background: var(--accent-soft); color: var(--accent);
+  border: 1px solid rgba(184, 64, 46, 0.3);
+  font-size: 20px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.link-info { min-width: 0; }
+.link-info b { display: block; font-size: 15px; color: var(--ink); }
+.link-info span {
+  display: block; margin-top: 3px; font-size: 12.5px; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.links-empty { text-align: center; color: var(--muted); font-size: 14.5px; padding: 80px 0; }
+
+/* 友链管理表单（编辑页） */
+.link-form { display: grid; grid-template-columns: 1fr 1.4fr 1.4fr auto; gap: 8px; margin: 12px 0 8px; }
+.link-form input {
+  font-family: inherit; font-size: 13.5px;
+  border: 1px solid var(--line); border-radius: 10px;
+  padding: 8px 12px; background: var(--bg); color: var(--ink);
+}
+.link-form input:focus { outline: none; border-color: var(--accent); }
+.link-form .btn-publish { padding: 8px 18px; font-size: 13.5px; }
+.mgr-name a { color: var(--accent); text-decoration: none; }
+.mgr-name a:hover { text-decoration: underline; }
+
+@media (max-width: 640px) {
+  .links-wrap { padding: 30px 18px 60px; }
+  .link-form { grid-template-columns: 1fr 1fr; }
+  .link-form .btn-publish { grid-column: 1 / -1; }
+}
+
+/* ---------- 评论区（连本地学习后端） ---------- */
+.cmt-box {
+  margin: 46px auto 0;
+  max-width: 720px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 26px 28px 22px;
+  box-shadow: 0 24px 44px -30px rgba(60, 42, 20, 0.28);
+}
+.cmt-head { display: flex; align-items: center; gap: 14px; }
+.cmt-seal {
+  width: 44px; height: 44px; flex: none;
+  background: var(--accent); color: #fff;
+  border-radius: 10px; transform: rotate(-4deg);
+  font-family: 'KaiTi', 'STKaiti', serif; font-size: 24px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 8px 16px -8px rgba(184, 64, 46, 0.55);
+}
+.cmt-headtxt { min-width: 0; }
+.cmt-title { font-size: 19px; color: var(--ink); margin: 0; line-height: 1.3; }
+.cmt-sub { font-size: 12.5px; color: var(--dim); }
+.cmt-count {
+  margin-left: auto; font-size: 12.5px; color: var(--accent);
+  background: var(--accent-soft); border: 1px solid rgba(184, 64, 46, 0.25);
+  border-radius: 999px; padding: 4px 12px; white-space: nowrap;
+}
+.cmt-list { margin-top: 8px; }
+.cmt-item { display: flex; gap: 12px; padding: 15px 0; border-bottom: 1px dashed var(--line); }
+.cmt-item:last-child { border-bottom: none; }
+.cmt-avatar {
+  width: 36px; height: 36px; flex: none; border-radius: 50%;
+  background: var(--accent-soft); color: var(--accent);
+  border: 1px solid rgba(184, 64, 46, 0.28);
+  font-size: 15px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.cmt-avatar-lg { width: 42px; height: 42px; font-size: 17px; }
+.cmt-body { min-width: 0; flex: 1; }
+.cmt-bubble {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 4px 14px 14px 14px;
+  padding: 10px 14px 9px;
+}
+.cmt-head { display: flex; align-items: baseline; gap: 10px; }
+.cmt-head b { font-size: 14px; color: var(--ink); }
+.cmt-time { font-size: 12px; color: var(--dim); }
+.cmt-text { margin: 5px 0 0; font-size: 14.5px; line-height: 1.75; color: #4a4338; word-break: break-word; }
+.cmt-offline { font-size: 13.5px; color: var(--muted); padding: 6px 0; }
+.cmt-loading { font-size: 13.5px; color: var(--dim); }
+
+.cmt-form { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 16px; }
+.cmt-userbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.cmt-who b { font-size: 15px; color: var(--ink); display: block; }
+.cmt-hello { font-size: 13px; color: var(--muted); }
+.cmt-login-tip { width: 100%; }
+.cmt-login-row { display: flex; gap: 8px; flex-wrap: wrap; width: 100%; }
+.cmt-login-row input {
+  font-family: inherit; font-size: 13.5px;
+  border: 1px solid var(--line); border-radius: 9px;
+  padding: 8px 12px; background: var(--bg); color: var(--ink);
+  flex: 1; min-width: 130px;
+}
+.cmt-login-row input:focus { outline: none; border-color: var(--accent); }
+.cmt-logout {
+  margin-left: auto; background: none; border: 1px solid var(--line);
+  border-radius: 9px; padding: 6px 13px; font-size: 12.5px;
+  color: var(--muted); cursor: pointer; font-family: inherit;
+}
+.cmt-logout:hover { color: var(--accent); border-color: var(--accent); }
+.cmt-editor textarea {
+  width: 100%; box-sizing: border-box; font-family: inherit; font-size: 14.5px;
+  border: 1px solid var(--line); border-radius: 12px; line-height: 1.7;
+  padding: 12px 14px; background: var(--bg); color: var(--ink); resize: vertical;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.cmt-editor textarea:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(184, 64, 46, 0.12);
+}
+.cmt-actions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 10px; }
+.cmt-msg { font-size: 13px; color: var(--accent); margin-right: auto; }
+.cmt-hint { font-size: 12px; color: var(--dim); }
+.cmt-btn {
+  background: var(--accent); color: #fff; border: none; border-radius: 10px;
+  padding: 9px 22px; font-size: 14px; cursor: pointer; font-family: inherit;
+  box-shadow: 0 8px 18px -10px rgba(184, 64, 46, 0.55);
+}
+.cmt-btn:hover { background: var(--accent-deep); }
+.cmt-btn-sm { padding: 7px 16px; font-size: 13px; }
+.cmt-btn-ghost {
+  background: none; color: var(--muted); border: 1px solid var(--line); box-shadow: none;
+}
+.cmt-btn-ghost:hover { color: var(--accent); border-color: var(--accent); background: none; }
+.cmt-note { margin: 14px 0 0; font-size: 12px; color: var(--dim); text-align: center; }
+
+@media (max-width: 640px) {
+  .cmt-box { padding: 20px 16px 16px; margin-left: 18px; margin-right: 18px; }
+}
+
+/* ============ 公告弹窗：顶部中间，只有「×」能关 ============ */
+.ann-pop {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(560px, calc(100vw - 28px));
+  z-index: 300;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--accent);
+  border-radius: 14px;
+  box-shadow: 0 18px 50px rgba(60, 42, 20, 0.22);
+  padding: 18px 46px 16px 18px;
+  display: flex;
+  gap: 14px;
+  animation: ann-in 0.45s ease-out;
+}
+@keyframes ann-in {
+  from { top: -90px; opacity: 0; }
+  to { top: 18px; opacity: 1; }
+}
+.ann-seal {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-family: "Kaiti SC", "STKaiti", "KaiTi", serif;
+  font-size: 21px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: rotate(-6deg);
+  box-shadow: 0 3px 8px rgba(184, 64, 46, 0.35);
+}
+.ann-body { flex: 1; min-width: 0; }
+.ann-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.ann-title { font-weight: 700; font-size: 16px; letter-spacing: 0.02em; }
+.ann-time { font-size: 12px; color: var(--dim); }
+.ann-text { margin-top: 6px; font-size: 14.5px; color: var(--muted); line-height: 1.8; }
+.ann-text p + p { margin-top: 4px; }
+.ann-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.ann-close:hover { color: #fff; background: var(--accent); border-color: var(--accent); }
+@media (max-width: 560px) {
+  .ann-pop { padding: 14px 40px 12px 14px; }
+  .ann-seal { width: 34px; height: 34px; font-size: 18px; }
+  .ann-title { font-size: 15px; }
+  .ann-text { font-size: 14px; }
+}
+
+/* 公告管理表单（编辑页） */
+.ann-form { display: flex; flex-direction: column; gap: 10px; margin: 12px 0 6px; }
+.ann-form input,
+.ann-textarea {
+  font-family: inherit;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+  padding: 9px 12px;
+  font-size: 14px;
+  color: var(--ink);
+  width: 100%;
+}
+.ann-form input:focus,
+.ann-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.ann-textarea { resize: vertical; min-height: 74px; line-height: 1.7; }
+.ann-form .btn-publish { align-self: flex-start; }
+.ann-now {
+  padding: 10px 12px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  margin-top: 4px;
+}
+.ann-now-text {
+  font-size: 13.5px;
+  color: var(--muted);
+  margin: 4px 0 8px;
+  white-space: pre-wrap;
+}
+
+/* ============================================================
+   全站动效（配合 fx.js）—— 滚动显现 / 顶栏收缩 / 回到顶部
+   ============================================================ */
+
+/* —— 滚动显现：fx.js 先挂 fx-prep 藏起来，进入视口后加 fx-in 浮现 —— */
+.fx-prep {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.65s cubic-bezier(0.2, 0.7, 0.3, 1),
+    transform 0.65s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.fx-prep.fx-in { opacity: 1; transform: none; }
+
+/* —— 顶栏滚过一屏后变紧凑、加投影 —— */
+.site-header { transition: box-shadow 0.25s, background 0.25s; }
+.site-header.scrolled {
+  background: rgba(245, 240, 232, 0.94);
+  box-shadow: 0 6px 24px rgba(87, 70, 48, 0.1);
+}
+
+/* —— 回到顶部：朱砂圆钮，滚过一屏半才浮现 —— */
+.fx-top {
+  position: fixed;
+  right: 26px;
+  bottom: 30px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid rgba(184, 64, 46, 0.35);
+  background: rgba(255, 253, 247, 0.92);
+  color: var(--accent);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+  transition: opacity 0.3s, transform 0.3s, background 0.2s, color 0.2s, border-color 0.2s;
+  box-shadow: 0 8px 22px rgba(87, 70, 48, 0.16);
+  z-index: 60;
+}
+.fx-top.show { opacity: 1; transform: none; pointer-events: auto; }
+.fx-top:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* —— 卡片：悬停时顶部浮出一条朱砂线，箭头跟着滑动 —— */
+.card-item { position: relative; overflow: hidden; }
+.card-item::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 18px;
+  width: 0;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: var(--grad);
+  transition: width 0.35s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.card-item:hover::before { width: calc(100% - 36px); }
+.read-more { transition: transform 0.25s, color 0.2s; }
+.card-item:hover .read-more { color: var(--accent); transform: translateX(4px); }
+
+/* —— 首屏新成员：kicker 小标 / 翻开日记按钮 / 下滑提示 —— */
+.hero-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12.5px;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+.hero-kicker::before,
+.hero-kicker::after {
+  content: "";
+  width: 30px;
+  height: 1px;
+  background: rgba(87, 70, 48, 0.35);
+}
+.hero-cta {
+  display: inline-block;
+  margin-top: 26px;
+  padding: 11px 32px;
+  border-radius: 999px;
+  background: var(--grad);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-decoration: none;
+  box-shadow: 0 10px 26px rgba(147, 41, 26, 0.28);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.hero-cta:hover { transform: translateY(-2px); box-shadow: 0 14px 32px rgba(147, 41, 26, 0.36); }
+
+.hero-scroll {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  width: 22px;
+  height: 36px;
+  border: 1.5px solid rgba(87, 70, 48, 0.45);
+  border-radius: 12px;
+  z-index: 1;
+}
+.hero-scroll span {
+  position: absolute;
+  left: 50%;
+  top: 7px;
+  width: 3px;
+  height: 7px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--accent);
+  animation: scrollDot 1.8s ease-in-out infinite;
+}
+@keyframes scrollDot {
+  0% { opacity: 0; transform: translateY(0); }
+  30% { opacity: 1; }
+  70% { opacity: 1; transform: translateY(12px); }
+  100% { opacity: 0; transform: translateY(14px); }
+}
+
+@media (max-width: 640px) {
+  .hero-scroll { display: none; }
+  .fx-top { right: 16px; bottom: 18px; width: 42px; height: 42px; }
+}
+
+/* ============================================================
+   竹简长卷 —— 每篇日记是一片竹，往右无限展开
+   ============================================================ */
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+
+.bamboo-zone { padding: 4px 0 46px; scroll-margin-top: 84px; }
+.bz-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 4px; }
+.bz-head h2 {
+  font-family: "Kaiti SC", "STKaiti", "KaiTi", "楷体", "DFKai-SB", serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 0.06em;
+}
+.bz-hint { font-size: 12.5px; color: var(--dim); letter-spacing: 0.1em; }
+
+/* 舞台：卷心金字浮现层的定位基准（上下留白对称，金字正好压在竹简正中） */
+.bs-stage { position: relative; }
+
+/* 横向卷轴：往右无限展开（顶部留白是金字浮现区） */
+.bamboo-scroll {
+  overflow-x: auto;
+  padding: 128px 60px 26px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(87, 70, 48, 0.35) transparent;
+}
+.bs-track { display: flex; align-items: center; gap: 9px; position: relative; width: max-content; }
+
+/* 卷首：卷紧的竹简筒，竖排金字「竹简卷」 */
+.bs-roll {
+  position: relative;
+  flex: 0 0 auto;
+  width: 92px;
+  height: 428px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    repeating-linear-gradient(90deg,
+      rgba(255, 226, 160, 0.05) 0 9px,
+      rgba(0, 0, 0, 0.3) 9px 11px,
+      rgba(0, 0, 0, 0) 11px 15px),
+    linear-gradient(180deg, #46351f, #2c2113 30%, #231a0e 70%, #3b2d1a);
+  box-shadow:
+    inset 0 0 0 1px rgba(217, 181, 115, 0.22),
+    inset 0 0 26px rgba(0, 0, 0, 0.55),
+    0 14px 32px rgba(50, 36, 18, 0.4);
+}
+/* 圆柱光影：中间受光、两侧转入暗部，像一卷攥紧的竹简 */
+.bs-roll::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  background:
+    linear-gradient(90deg,
+      rgba(0, 0, 0, 0.66) 0%, rgba(0, 0, 0, 0.12) 20%,
+      rgba(255, 236, 190, 0.1) 46%,
+      rgba(0, 0, 0, 0.14) 68%, rgba(0, 0, 0, 0.62) 100%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0) 14%, rgba(0, 0, 0, 0) 86%, rgba(0, 0, 0, 0.5));
+  pointer-events: none;
+}
+.bs-roll-name {
+  position: relative;
+  z-index: 1;
+  writing-mode: vertical-rl;
+  font-family: "Kaiti SC", "STKaiti", "KaiTi", "楷体", "DFKai-SB", serif;
+  font-size: 23px;
+  font-weight: 700;
+  letter-spacing: 0.34em;
+  color: #f2d78c;
+  text-shadow: 0 0 14px rgba(242, 215, 140, 0.35), 0 2px 3px rgba(0, 0, 0, 0.75);
+}
+/* 捆住卷首的两道绳，正好接上贯穿竹片的编绳 */
+.bs-roll-tie {
+  position: absolute;
+  left: -9px;
+  right: -9px;
+  height: 7px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #6d5634, #3a2d1a 55%, #211809);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+  z-index: 2;
+}
+.bs-roll-tie:nth-child(1) { top: calc(16% - 2px); }
+.bs-roll-tie:nth-child(2) { top: calc(84% - 2px); }
+
+/* 编绳：两道暗色绳贯穿所有竹片 */
+.bs-track::before,
+.bs-track::after {
+  content: "";
+  position: absolute;
+  left: -60px;
+  right: -60px;
+  height: 4px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #57452c, #33281a 55%, #221a0f);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  z-index: 2;
+  pointer-events: none;
+}
+.bs-track::before { top: 16%; }
+.bs-track::after { bottom: 16%; }
+
+/* 单片竹简 */
+.bamboo-strip {
+  position: relative;
+  flex: 0 0 auto;
+  width: 66px;
+  height: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 0 16px;
+  text-decoration: none;
+  background-color: #2b231b;
+  background-image: url('bamboo.png');
+  background-size: auto 100%;
+  background-repeat: repeat-x;
+  border-radius: 9px;
+  box-shadow: inset 0 0 0 1px rgba(217, 181, 115, 0.16), 0 10px 26px rgba(60, 44, 26, 0.26);
+  transition: transform 0.25s cubic-bezier(0.2, 0.7, 0.3, 1), box-shadow 0.25s;
+}
+a.bamboo-strip { cursor: pointer; }
+
+/* 竹筒立体感：左右压暗、上下收光，像一根根圆竹 */
+.bamboo-strip::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9px;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0) 26%, rgba(0, 0, 0, 0) 74%, rgba(0, 0, 0, 0.5) 100%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.42) 0%, rgba(0, 0, 0, 0) 15%, rgba(0, 0, 0, 0) 85%, rgba(0, 0, 0, 0.46) 100%);
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+.bamboo-strip:hover {
+  transform: translateY(-8px);
+  box-shadow: inset 0 0 0 1px rgba(232, 199, 133, 0.5), 0 20px 42px rgba(60, 44, 26, 0.38);
+}
+.bamboo-strip:hover::after { opacity: 0.45; }
+
+/* 竹上竖排的日期与标题（金字） */
+.bamboo-strip .date-stamp {
+  position: relative;
+  z-index: 1;
+  writing-mode: vertical-rl;
+  font-family: inherit;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: #a3895a;
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  margin-bottom: 14px;
+  white-space: nowrap;
+}
+.bs-title {
+  position: relative;
+  z-index: 1;
+  writing-mode: vertical-rl;
+  font-family: "Kaiti SC", "STKaiti", "KaiTi", "楷体", "DFKai-SB", serif;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: 0.18em;
+  color: #ddbd80;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65), 0 0 16px rgba(220, 189, 128, 0.16);
+  max-height: 230px;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(180deg, #000 78%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 78%, transparent 100%);
+}
+.bs-lyric {
+  position: relative;
+  z-index: 1;
+  writing-mode: vertical-rl;
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  line-height: 1.9;
+  color: #8f7a52;
+  margin-top: 8px;
+  max-height: 168px;
+  overflow: hidden;
+}
+
+/* 悬浮小卡已退役：日记内容改为在卷心以金字浮现（见 .bs-spirit）。
+   结构保留 —— 它是浮现层的数据源，也是 publisher 标签胶囊的挂载点 */
+.bs-pop { display: none; }
+
+/* —— 竹简上方的金字：悬停竹简时，标题在卷轴上方如金雾凝字 —— */
+.bs-spirit {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  width: min(620px, 86%);
+  text-align: center;
+  pointer-events: none;
+  z-index: 8;
+  opacity: 0;
+  transition:
+    opacity 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.bs-spirit.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+/* 金色灵光在字后缓缓呼吸 */
+.bs-spirit::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 150%;
+  height: 320%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(ellipse at center,
+    rgba(216, 174, 84, 0.16) 0%, rgba(216, 174, 84, 0.06) 45%, transparent 70%);
+  animation: spiritBreath 3.2s ease-in-out infinite;
+}
+@keyframes spiritBreath {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+/* 标题：楷体大金字，逐字从灵光中凝聚而出 */
+.bs-spirit b {
+  display: block;
+  position: relative;
+  font-family: "Kaiti SC", "STKaiti", "KaiTi", "楷体", "DFKai-SB", serif;
+  font-size: clamp(26px, 3.6vw, 38px);
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0.1em;
+}
+.bs-spirit b span {
+  display: inline-block;
+  background: linear-gradient(180deg, #fffbe8 0%, #f6d97e 42%, #c08e33 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  opacity: 0;
+  transform: translateY(13px) scale(1.16);
+  filter: blur(9px) drop-shadow(0 0 12px rgba(214, 168, 78, 0.45)) drop-shadow(0 2px 4px rgba(46, 32, 12, 0.6));
+  animation: spiritChar 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: calc(var(--i, 0) * 85ms);
+  will-change: transform, opacity, filter;
+}
+/* 金字从虚化的金雾中凝聚：先显形，再清晰落定 */
+@keyframes spiritChar {
+  0% {
+    opacity: 0;
+    transform: translateY(13px) scale(1.16);
+    filter: blur(9px) drop-shadow(0 0 12px rgba(214, 168, 78, 0.45)) drop-shadow(0 2px 4px rgba(46, 32, 12, 0.6));
+  }
+  45% { opacity: 1; }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: blur(0) drop-shadow(0 0 12px rgba(214, 168, 78, 0.45)) drop-shadow(0 2px 4px rgba(46, 32, 12, 0.6));
+  }
+}
+/* 摘要：金色小字，在标题凝聚完后浮现 */
+.bs-spirit .sp-sub {
+  position: relative;
+  margin: 12px auto 0;
+  max-width: 480px;
+  font-size: 13px;
+  line-height: 1.75;
+  letter-spacing: 0.06em;
+  color: #8a6a34;
+  text-shadow: 0 1px 2px rgba(255, 248, 230, 0.9);
+  opacity: 0;
+  filter: blur(5px);
+  transform: translateY(10px);
+  animation: spiritRise 0.62s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.bs-spirit .sp-open {
+  position: relative;
+  display: block;
+  margin-top: 10px;
+  font-size: 10.5px;
+  letter-spacing: 0.34em;
+  text-indent: 0.34em;
+  color: #a37f45;
+  text-shadow: 0 1px 2px rgba(255, 248, 230, 0.9);
+  opacity: 0;
+  filter: blur(5px);
+  transform: translateY(10px);
+  animation: spiritRise 0.62s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes spiritRise {
+  0% { opacity: 0; transform: translateY(10px); filter: blur(5px); }
+  100% { opacity: 1; transform: none; filter: blur(0); }
+}
+
+/* 音乐竹片：呼吸金晕 */
+.bs-music { animation: bsGlow 3.8s ease-in-out infinite; }
+@keyframes bsGlow {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgba(217, 181, 115, 0.16), 0 10px 26px rgba(60, 44, 26, 0.26); }
+  50% { box-shadow: inset 0 0 0 1px rgba(235, 204, 140, 0.55), 0 12px 36px rgba(184, 64, 46, 0.3); }
+}
+
+/* 虚线竹片：留给未来的新日记 */
+.bs-dashed {
+  background-image: none;
+  background-color: transparent;
+  border: 1.5px dashed rgba(163, 137, 90, 0.55);
+  box-shadow: none;
+}
+.bs-dashed:hover { transform: none; box-shadow: none; }
+.bs-dashed::after { display: none; }
+.bs-dashed .bs-title { color: #a3895a; text-shadow: none; }
+
+/* 触屏没有悬停：金字浮现不生效，长卷保持紧凑（不留顶部浮现区） */
+@media (hover: none) {
+  .bs-spirit { display: none; }
+  .bamboo-scroll { padding-top: 26px; }
+}
+
+/* 进场显现：竹片从卷首方向被依次抽出，抽完交还悬停过渡 */
+.bamboo-strip.fx-prep {
+  opacity: 0;
+  transform: translateX(-42px);
+  transition:
+    opacity 0.65s cubic-bezier(0.2, 0.7, 0.3, 1),
+    transform 0.65s cubic-bezier(0.2, 0.7, 0.3, 1),
+    box-shadow 0.25s;
+}
+.bamboo-strip.fx-prep.fx-in { opacity: 1; transform: none; }
+
+@media (max-width: 640px) {
+  .bamboo-strip { width: 56px; height: 340px; padding: 16px 0 14px; }
+  .bs-title { font-size: 15px; max-height: 192px; }
+  .bs-lyric { font-size: 9.5px; max-height: 140px; }
+  .bamboo-scroll { padding: 26px 36px 22px; }
+  .bs-roll { width: 76px; height: 362px; }
+  .bs-roll-name { font-size: 19px; }
+  .bz-head h2 { font-size: 22px; }
+}
+
+/* ============================================================
+   展开一篇日记的过场：全页渐隐，标题浮到屏幕中央
+   ============================================================ */
+body.bs-open .site-header,
+body.bs-open .hero,
+body.bs-open .paper-zone,
+body.bs-open .bamboo-zone {
+  opacity: 0;
+  transform: scale(0.985);
+  transition: opacity 0.45s ease, transform 0.45s ease;
+}
+.page-home.bs-open::before { opacity: 0; transition: opacity 0.5s ease; }
+
+.bs-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: var(--bg);
+  pointer-events: none;
+  animation: veilShow 0.42s ease 0.04s both;
+}
+@keyframes veilShow { from { opacity: 0; } }
+.bs-veil b {
+  font-family: "Kaiti SC", "STKaiti", "KaiTi", "楷体", "DFKai-SB", serif;
+  font-size: clamp(28px, 4.6vw, 44px);
+  color: var(--ink);
+  animation: veilRise 0.5s ease 0.1s both;
+}
+.bs-veil i {
+  font-style: normal;
+  font-size: 12px;
+  letter-spacing: 0.32em;
+  text-indent: 0.32em;
+  color: var(--accent);
+  animation: veilRise 0.5s ease 0.22s both;
+}
+@keyframes veilRise { from { opacity: 0; transform: translateY(12px); } }
+
+/* 文章页帷幕：标题先立在中央，帘幕升起后正文以它为中心绽放 */
+.jd-curtain {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  transition: opacity 0.85s ease;
+}
+.jd-curtain span {
+  font-family: "Kaiti SC", "STKaiti", "KaiTi", "楷体", "DFKai-SB", serif;
+  font-size: clamp(26px, 4.2vw, 40px);
+  color: var(--ink);
+  padding: 0 24px;
+  text-align: center;
+  transition: transform 0.85s ease, opacity 0.85s ease;
+}
+.jd-curtain.lift { opacity: 0; pointer-events: none; }
+.jd-curtain.lift span { transform: translateY(-48px); opacity: 0; }
+.article h1.jd-hold { animation: h1Settle 1s ease 0.5s both; }
+@keyframes h1Settle {
+  from { opacity: 0; transform: translateY(30px) scale(1.12); }
 }

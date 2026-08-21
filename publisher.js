@@ -163,12 +163,12 @@ var JD = {
     });
   },
 
-  /* 从一个页面里移除标签：标签栏、卡片 data-tags、卡片胶囊；空卡片 → 待定 */
+  /* 从一个页面里移除标签：标签栏、竹简 data-tags、悬浮卡胶囊；空竹简 → 待定 */
   _stripTag: function (html, tag, barTags) {
     var self = this;
     var needPending = false;
 
-    html = html.replace(/(<a class="card-item[^"]*"[^>]*data-tags=")([^"]*)("[^>]*>)/g, function (m, pre, csv, post) {
+    html = html.replace(/(<a class="bamboo-strip[^"]*"[^>]*data-tags=")([^"]*)("[^>]*>)/g, function (m, pre, csv, post) {
       if (csv.indexOf(tag) === -1) { return m; }
       var list = csv.split(',').filter(function (t) { return t && t !== tag; });
       if (!list.length) { list = ['待定']; needPending = true; }
@@ -177,9 +177,9 @@ var JD = {
 
     html = html.replace(new RegExp('<span class="chip chip-soft">#' + self._reEsc(tag) + '</span>\\s*', 'g'), '');
 
-    /* 落入待定的卡片补回一枚 #待定 胶囊 */
-    html = html.replace(/(<a class="card-item[^"]*"[^>]*data-tags="待定"[^>]*>\s*<div class="card-head">\s*<span class="date-stamp">[^<]*<\/span>)\s*/g,
-      '$1\n          <span class="chip chip-soft">#待定</span>\n        ');
+    /* 落入待定的竹简补回一枚 #待定 胶囊 */
+    html = html.replace(/(<a class="bamboo-strip[^"]*"[^>]*data-tags="待定"[^>]*>\s*<span class="date-stamp">[^<]*<\/span>\s*<span class="bs-title">[^<]*<\/span>\s*<span class="bs-pop">\s*<b>[^<]*<\/b>)\s*/g,
+      '$1\n              <span class="chip chip-soft">#待定</span>\n            ');
 
     var newBar = barTags.slice();
     if (needPending && newBar.indexOf('待定') === -1) { newBar.push('待定'); }
@@ -202,17 +202,17 @@ var JD = {
 
   /* ---------- 日记管理 ---------- */
 
-  /* 列出所有日记卡片（从日记页解析） */
+  /* 列出所有日记竹简（从日记页解析） */
   listPosts: function () {
     return this.get('blog.html').then(function (g) {
       var posts = [];
-      var re = /<a class="card-item[^"]*"([^>]*)>([\s\S]*?)<\/a>/g, m;
+      var re = /<a class="bamboo-strip[^"]*"([^>]*)>([\s\S]*?)<\/a>/g, m;
       while ((m = re.exec(g.text))) {
         var href = (m[1].match(/href="([^"]+)"/) || [])[1];
         var tagsCsv = (m[1].match(/data-tags="([^"]*)"/) || [])[1] || '';
-        var title = ((m[2].match(/<h3 class="card-title">([^<]*)<\/h3>/) || [])[1] || '').trim();
+        var title = ((m[2].match(/<span class="bs-title">([^<]*)<\/span>/) || [])[1] || '').trim();
         var date = ((m[2].match(/<span class="date-stamp">([^<]*)<\/span>/) || [])[1] || '').trim();
-        if (href && /\.html$/.test(href) && title) {
+        if (href && /^posts\/.+\.html$/.test(href) && title) {
           posts.push({ file: href, title: title, date: date, tags: tagsCsv.split(',').filter(Boolean) });
         }
       }
@@ -259,9 +259,9 @@ var JD = {
     });
   },
 
-  /* 替换某张卡片的 data-tags 和胶囊（找不到卡片返回 null） */
+  /* 替换某片竹简的 data-tags 和胶囊（找不到竹简返回 null） */
   _setCardTags: function (html, file, tags) {
-    var re = new RegExp('(<a class="card-item[^"]*"[^>]*href="' + this._reEsc(file) + '"[^>]*>)([\\s\\S]*?)(</a>)');
+    var re = new RegExp('(<a class="bamboo-strip[^"]*"[^>]*href="' + this._reEsc(file) + '"[^>]*>)([\\s\\S]*?)(</a>)');
     var m = html.match(re);
     if (!m) { return null; }
     var head = m[1].replace(/data-tags="[^"]*"/, 'data-tags="' + tags.join(',') + '"');
@@ -270,8 +270,8 @@ var JD = {
     if (m[2].indexOf('chip chip-soft') > -1) {
       body = m[2].replace(/<span class="chip chip-soft">#[^<]*<\/span>/, chip);
     } else {
-      body = m[2].replace(/(<div class="card-head">\s*<span class="date-stamp">[^<]*<\/span>)/,
-        '$1\n          ' + chip);
+      body = m[2].replace(/(<span class="bs-pop">\s*<b>[^<]*<\/b>)/,
+        '$1\n              ' + chip);
     }
     if (head === m[1] && m[1].indexOf('data-tags') === -1) { return null; }
     return html.replace(re, head + body + m[3]);
@@ -294,6 +294,94 @@ var JD = {
     });
   },
 
+  /* ---------- 友链 ---------- */
+
+  /* links.json 不存在（还没加过友链）就当空列表 */
+  fetchLinks: function () {
+    return this.get('links.json').then(function (g) {
+      var obj; try { obj = JSON.parse(g.text); } catch (e) { obj = {}; }
+      return Array.isArray(obj.items) ? obj.items : [];
+    }).catch(function (e) {
+      if (e.notFound) { return []; }
+      throw e;
+    });
+  },
+
+  addLink: function (raw) {
+    var self = this;
+    var name = String(raw.name || '').trim().replace(/[<>"\\]/g, '');
+    var url = String(raw.url || '').trim();
+    var desc = String(raw.desc || '').trim().replace(/[<>"\\]/g, '');
+    if (!name || !url) { return Promise.reject(new Error('昵称和网址都要填')); }
+    if (!/^https?:\/\//.test(url)) { url = 'https://' + url; }
+    return this.fetchLinks().then(function (items) {
+      if (items.some(function (it) { return it.url === url; })) {
+        throw new Error('这个网址已经加过啦');
+      }
+      items.unshift({ name: name, url: url, desc: desc });
+      return self.put('links.json', JSON.stringify({ items: items }, null, 2) + '\n', '友链新增：' + name);
+    });
+  },
+
+  removeLink: function (url) {
+    var self = this;
+    return this.fetchLinks().then(function (items) {
+      var left = items.filter(function (it) { return it.url !== url; });
+      if (left.length === items.length) { throw new Error('没有找到这条友链'); }
+      return self.put('links.json', JSON.stringify({ items: left }, null, 2) + '\n', '友链移除');
+    });
+  },
+
+  /* ---------- 公告 ---------- */
+
+  /* 读当前公告；没发过（404）返回 null */
+  fetchAnnouncement: function () {
+    return this.get('announcement.json').then(function (g) {
+      var obj; try { obj = JSON.parse(g.text); } catch (e) { obj = null; }
+      return (obj && obj.text) ? obj : null;
+    }).catch(function (e) {
+      if (e.notFound) { return null; }
+      throw e;
+    });
+  },
+
+  /* 发布（覆盖旧公告）：announcement.json 是公告的"数据库" */
+  publishAnnouncement: function (raw) {
+    var title = String(raw.title || '').trim().replace(/[<>"\\]/g, '');
+    var text = String(raw.text || '').trim();
+    if (!text) { return Promise.reject(new Error('公告内容不能为空')); }
+    var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+    var d = new Date();
+    var obj = {
+      title: title || '公告',
+      text: text,
+      updatedAt: d.getFullYear() + '.' + pad(d.getMonth() + 1) + '.' + pad(d.getDate()) +
+        ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes())
+    };
+    return this.put('announcement.json', JSON.stringify(obj, null, 2) + '\n',
+      '发布公告：' + obj.title).then(function () { return obj; });
+  },
+
+  /* 撤下：删掉仓库里的 announcement.json，弹窗随之消失 */
+  withdrawAnnouncement: function () {
+    var self = this;
+    return this.get('announcement.json').then(function (g) {
+      return fetch(self._url('announcement.json'), {
+        method: 'DELETE',
+        headers: self._headers({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ message: '撤下公告', sha: g.sha, branch: 'main' })
+      }).then(function (r) {
+        if (r.ok) { return true; }
+        return r.json().then(function (j) {
+          throw new Error('撤下失败：' + (j.message || r.status));
+        }, function () { throw new Error('撤下失败：' + r.status); });
+      });
+    }).catch(function (e) {
+      if (e.notFound) { throw new Error('现在没有正在展示的公告'); }
+      throw e;
+    });
+  },
+
   /* ---------- 发布日记 ---------- */
 
   publishPost: function (data) {
@@ -310,7 +398,7 @@ var JD = {
       blogText = g.text;
       var re = /post-(\d+)\.html/g, m, max = 1;
       while ((m = re.exec(blogText))) { max = Math.max(max, parseInt(m[1], 10)); }
-      data.file = 'post-' + (max + 1) + '.html';
+      data.file = 'posts/post-' + (max + 1) + '.html';
       return self.get('index.html');
     }).then(function (g) {
       var newIndex = g.text;
@@ -322,18 +410,19 @@ var JD = {
       });
 
       var card = self.buildCard(data);
-      newIndex = newIndex.replace('<section class="cards">',
-        '<section class="cards">\n\n      ' + card + '\n');
-      newBlog = newBlog.replace('<section class="cards">',
-        '<section class="cards">\n\n      ' + card + '\n');
+      var anchor = '<!-- 新日记从这里展开 -->';
+      newIndex = newIndex.replace(anchor, anchor + '\n\n      ' + card + '\n');
+      newBlog = newBlog.replace(anchor, anchor + '\n\n      ' + card + '\n');
 
       newBlog = newBlog.replace(/目前共 (\d+) 篇/, function (s, num) {
         return '目前共 ' + (parseInt(num, 10) + 1) + ' 篇';
       });
 
       var galleryOps = (data.images || []).map(function (img) {
-        return { src: img.path, title: data.title, wroteAt: data.wroteAt, post: data.file };
-      });
+        return { src: img.path, type: 'image', title: data.title, wroteAt: data.wroteAt, post: data.file };
+      }).concat((data.videos || []).map(function (v) {
+        return { src: v.path, type: 'video', title: data.title, wroteAt: data.wroteAt, post: data.file };
+      }));
 
       return self.put(data.file, self.buildPostPage(data), '新增日记：' + data.title)
         .then(function () { return self.put('index.html', newIndex, '首页更新：' + data.title); })
@@ -358,18 +447,18 @@ var JD = {
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   },
 
+  /* 生成一片竹简（首页 / 日记页共用） */
   buildCard: function (d) {
-    var firstPara = (d.content.split(/\n\s*\n/)[0] || '').trim();
-    var excerpt = d.subtitle || firstPara.slice(0, 60);
-    return '<a class="card-item" data-tags="' + d.tags.join(',') + '" href="' + d.file + '">\n' +
-      '        <div class="card-head">\n' +
+    var firstPara = (d.content.split(/\n\s*\n/)[0] || '').trim().replace(/\[(图|视频)\d+\]/g, '');
+    var excerpt = d.subtitle || firstPara.slice(0, 60) || '一篇新日记';
+    return '<a class="bamboo-strip" data-tags="' + d.tags.join(',') + '" href="' + d.file + '">\n' +
       '          <span class="date-stamp">' + d.date + ' ' + d.time + '</span>\n' +
-      '          <span class="chip chip-soft">#' + this.esc(d.tags[0]) + '</span>\n' +
-      '        </div>\n' +
-      '        <h3 class="card-title">' + this.esc(d.title) + '</h3>\n' +
-      '        <p class="card-excerpt">' + this.esc(excerpt) + '</p>\n' +
-      '        <span class="read-more">阅读全文 →</span>\n' +
-      '      </a>';
+      '          <span class="bs-title">' + this.esc(d.title) + '</span>\n' +
+      '          <span class="bs-pop"><b>' + this.esc(d.title) + '</b>\n' +
+      '            <span class="chip chip-soft">#' + this.esc(d.tags[0]) + '</span>\n' +
+      '            <p>' + this.esc(excerpt) + '</p>\n' +
+      '            <em>展开此简 →</em></span>\n' +
+      '        </a>';
   },
 
   buildPostPage: function (d) {
@@ -377,19 +466,26 @@ var JD = {
       return '<span class="chip chip-soft">#' + JD.esc(t) + '</span>';
     }).join('\n    ');
 
-    var imgByMarker = {};
-    (d.images || []).forEach(function (img) { imgByMarker[img.marker] = img; });
+    var mediaByMarker = {};
+    (d.images || []).forEach(function (img) { mediaByMarker[img.marker] = { path: img.path, kind: 'image' }; });
+    (d.videos || []).forEach(function (v) { mediaByMarker[v.marker] = { path: v.path, kind: 'video' }; });
 
     var blocks = [];
     d.content.split(/\n\s*\n/).forEach(function (raw) {
       var b = raw.trim();
       if (!b) { return; }
-      var m = b.match(/^\[(图\d+)\]$/);
-      if (m && imgByMarker[m[1]]) {
-        blocks.push('    <figure class="post-img"><img src="' + imgByMarker[m[1]].path +
-          '" alt="' + JD.esc(d.title) + '" loading="lazy"></figure>');
+      var m = b.match(/^\[(图|视频)\d+\]$/);
+      if (m && mediaByMarker[m[0].slice(1, -1)]) {
+        var md = mediaByMarker[m[0].slice(1, -1)];
+        if (md.kind === 'video') {
+          blocks.push('    <figure class="post-video"><video src="../' + md.path +
+            '" controls preload="metadata" playsinline></video></figure>');
+        } else {
+          blocks.push('    <figure class="post-img"><img src="../' + md.path +
+            '" alt="' + JD.esc(d.title) + '" loading="lazy"></figure>');
+        }
       } else {
-        var txt = JD.esc(b).replace(/\[图\d+\]/g, '');
+        var txt = JD.esc(b).replace(/\[(图|视频)\d+\]/g, '');
         if (txt) { blocks.push('    <p class="body-text">' + txt + '</p>'); }
       }
     });
@@ -415,36 +511,37 @@ var POST_TEMPLATE = [
   '<meta charset="UTF-8">',
   '<meta name="viewport" content="width=device-width, initial-scale=1.0">',
   '<title>{TITLE} · 就像戒不掉你</title>',
-  '<link rel="icon" type="image/png" href="favicon.png">',
-  '<link rel="stylesheet" href="style.css">',
+  '<link rel="icon" type="image/png" href="../favicon.png">',
+  '<link rel="stylesheet" href="../style.css">',
   '</head>',
   '<body>',
   '',
   '<header class="site-header">',
   '  <div class="header-inner">',
-  '    <a class="brand" href="index.html">',
-  '      <span class="brand-mark"><img src="logo.jpg" alt="就像戒不掉你"></span>',
+  '    <a class="brand" href="../index.html">',
+  '      <span class="brand-mark"><img src="../logo.jpg" alt="就像戒不掉你"></span>',
   '      <span class="brand-name">就像戒不掉你</span>',
   '    </a>',
   '    <nav class="main-nav">',
-  '      <a href="index.html" class="nav-link">首页</a>',
-  '      <a href="blog.html" class="nav-link">日记</a>',
-  '      <a href="photos.html" class="nav-link">相册</a>',
+  '      <a href="../index.html" class="nav-link">首页</a>',
+  '      <a href="../blog.html" class="nav-link">日记</a>',
+  '      <a href="../photos.html" class="nav-link">相册</a>',
   '      <span class="nav-link nav-off">留言板<span class="mini-badge">未开放</span></span>',
-  '      <a href="about.html" class="nav-link">关于作者</a>',
+  '      <a href="../links.html" class="nav-link">友链</a>',
+  '      <a href="../about.html" class="nav-link">关于作者</a>',
   '    </nav>',
   '    <div class="header-actions">',
   '      <span class="search-off" title="搜索 · 未开放">',
   '        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>',
   '      </span>',
-  '      <a href="edit.html" class="btn-upload">＋ 上传日记</a>',
+  '      <a href="../edit.html" class="btn-upload">＋ 上传日记</a>',
   '    </div>',
   '  </div>',
   '</header>',
   '',
   '<main>',
   '  <article class="article">',
-  '    <a class="back-link" href="blog.html">← 返回日记</a>',
+  '    <a class="back-link" href="../blog.html">← 返回日记</a>',
   '    <div class="article-meta">',
   '      <span class="date-stamp">{DATE}</span>',
   '      {CHIPS}',
@@ -456,8 +553,8 @@ var POST_TEMPLATE = [
   '    <p class="end-mark">· 完 ·</p>',
   '    <p class="post-time">写于 {WROTEAT}</p>',
   '    <div class="article-footer-nav">',
-  '      <a href="blog.html">← 返回日记列表</a>',
-  '      <a href="photos.html">看看相册 →</a>',
+  '      <a href="../blog.html">← 返回日记列表</a>',
+  '      <a href="../photos.html">看看相册 →</a>',
   '    </div>',
   '  </article>',
   '</main>',
@@ -465,6 +562,10 @@ var POST_TEMPLATE = [
   '<footer class="site-footer">',
   '  <p>暂无备案号等信息<span class="dot">·</span>住在 GitHub Pages<span class="dot">·</span>始于 2026.08.18</p>',
   '</footer>',
+  '',
+  '<script src="../announcement.js"></script>',
+'<script src="../comments.js"></script>',
+  '<script src="../fx.js"></script>',
   '',
   '</body>',
   '</html>'
