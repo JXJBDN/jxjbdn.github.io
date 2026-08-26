@@ -1423,7 +1423,7 @@ html { background: var(--bg); }
 .bs-track::before { top: 16%; }
 .bs-track::after { bottom: 16%; }
 
-/* 单片竹简 */
+/* 单片竹简：纯色深棕底（与卷首同料），金字清晰可读；只留极淡竹节刻线做质感 */
 .bamboo-strip {
   position: relative;
   flex: 0 0 auto;
@@ -1434,10 +1434,11 @@ html { background: var(--bg); }
   align-items: center;
   padding: 20px 0 16px;
   text-decoration: none;
-  background-color: #2b231b;
-  background-image: url('bamboo.png');
-  background-size: auto 100%;
-  background-repeat: repeat-x;
+  background:
+    repeating-linear-gradient(90deg,
+      rgba(0, 0, 0, 0.18) 0 1.5px,
+      rgba(0, 0, 0, 0) 1.5px 14px),
+    linear-gradient(180deg, #453421, #2d2316 30%, #251d11 70%, #3d2f1d);
   border-radius: 9px;
   box-shadow: inset 0 0 0 1px rgba(217, 181, 115, 0.16), 0 10px 26px rgba(60, 44, 26, 0.26);
   transition: transform 0.25s cubic-bezier(0.2, 0.7, 0.3, 1), box-shadow 0.25s;

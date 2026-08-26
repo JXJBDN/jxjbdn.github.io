@@ -60,33 +60,10 @@
   })();
 
   /* ---------- 竹简卷轴 ----------
-     每片竹简取竹简大图里不同的一段竖条做底纹，循环取用；
-     日记再多也只是往右接长。 */
+     竹片底色由 style.css 直接上纯色，日记再多也只是往右接长。 */
   (function () {
     var strips = document.querySelectorAll('.bamboo-strip');
     if (!strips.length) { return; }
-
-    var IMG_W = 370, IMG_H = 135;   /* bamboo.png 实际尺寸 */
-    var START = 0.14;               /* 跳过图片左侧卷起的部分 */
-    var N = 11;                     /* 图上可用切出的竹片数 */
-
-    function paint() {
-      var h = strips[0].offsetHeight;
-      if (!h) { return; }
-      var scale = h / IMG_H;
-      var imgW = IMG_W * scale;
-      Array.prototype.forEach.call(strips, function (s, i) {
-        var w = s.offsetWidth || 78;
-        var f = START + ((i % N) + 0.5) / N * (1 - START);
-        s.style.backgroundPosition = Math.round(w / 2 - f * imgW) + 'px center';
-      });
-    }
-    paint();
-    var tm;
-    window.addEventListener('resize', function () {
-      clearTimeout(tm);
-      tm = setTimeout(paint, 150);
-    });
 
     /* 点开一片竹简：全页渐隐，标题浮到屏幕中央，再翻进日记 */
     Array.prototype.forEach.call(strips, function (s) {
