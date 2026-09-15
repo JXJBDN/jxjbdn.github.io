@@ -143,7 +143,7 @@
   var SELECTOR =
     '.page-hero, .profile, .about-section, .hero-text-zone, ' +
     '.link-card, .photo-card, .editor-hero, .paper, .setup-card, ' +
-    '.tag-mgr-card, .cmt-box, .bamboo-strip, .bs-roll, .bz-head, .article > *';
+    '.tag-mgr-card, .cmt-box, .bamboo-strip, .bs-roll, .bz-head, .shelf-group, .article > *';
 
   function cleanup(el) {
     el.classList.remove('fx-prep', 'fx-in');
