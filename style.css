@@ -693,6 +693,40 @@ html { background: var(--bg); }
 .post-img img { width: 100%; border-radius: 14px; border: 1px solid var(--line); display: block; }
 .post-time { text-align: center; font-size: 12.5px; color: var(--dim); margin: 10px 0 0; letter-spacing: 1px; }
 
+/* --- 编辑历史：文末的「编修留痕」 --- */
+.edit-history {
+  margin: 22px auto 6px;
+  max-width: 460px;
+  padding: 13px 22px 11px;
+  border: 1px dashed rgba(184, 64, 46, 0.32);
+  border-radius: 12px;
+  background: rgba(184, 64, 46, 0.04);
+}
+.edit-history .eh-cap {
+  font-family: "Kaiti SC", "STKaiti", "KaiTi", "楷体", "DFKai-SB", serif;
+  font-size: 13px;
+  color: var(--muted);
+  letter-spacing: 0.4em;
+  margin-bottom: 4px;
+}
+.edit-history ul { list-style: none; margin: 0; padding: 0; }
+.edit-history li { font-size: 12.5px; color: var(--dim); line-height: 2; }
+.edit-history li i { font-style: normal; color: var(--accent); opacity: 0.72; margin-right: 10px; }
+
+/* --- 编辑模式：放弃修改按钮 --- */
+.btn-discard {
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 9px 18px;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.18s, border-color 0.18s;
+}
+.btn-discard:hover { color: var(--accent); border-color: var(--accent); }
+
 /* --- 标签管理面板 --- */
 .tag-mgr-card { margin-top: 22px; }
 .tag-mgr-card details { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 20px 14px; }

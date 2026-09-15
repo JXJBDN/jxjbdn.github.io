@@ -277,6 +277,217 @@ var JD = {
     return html.replace(re, head + body + m[3]);
   },
 
+  /* ---------- 日记编辑 ---------- */
+
+  /* HTML 实体还原（esc 的逆操作，编辑日记时把正文还原成可编辑文字） */
+  unesc: function (s) {
+    return String(s)
+      .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+  },
+
+  /* 把一篇已发布的日记页解析回可编辑的数据 */
+  parsePost: function (html) {
+    var title = ((html.match(/<h1>([\s\S]*?)<\/h1>/) || [])[1] || '')
+      .replace(/<[^>]+>/g, '').trim();
+    var lead = ((html.match(/<p class="lead">([\s\S]*?)<\/p>/) || [])[1] || '').trim();
+    var stamp = ((html.match(/<span class="date-stamp">([^<]*)<\/span>/) || [])[1] || '').trim();
+    /* 老日记（post-1/2）没有「写于」行，用日期戳当初稿时间 */
+    var wroteAt = ((html.match(/<p class="post-time">[\s\S]*?(\d{4}\.\d{2}\.\d{2}(?: \d{2}:\d{2})?)[\s\S]*?<\/p>/) || [])[1] || stamp).trim();
+
+    var tags = [];
+    var meta = html.match(/<div class="article-meta">[\s\S]*?<\/div>/);
+    if (meta) {
+      var tre = /<span class="chip chip-soft">#([^<]*)<\/span>/g, tm;
+      while ((tm = tre.exec(meta[0]))) { tags.push(tm[1].trim()); }
+    }
+
+    var history = [];
+    var hb = html.match(/<div class="edit-history">[\s\S]*?<\/div>/);
+    if (hb) {
+      var hre = /<li><i>([^<]*)<\/i>([^<]*)<\/li>/g, hm;
+      while ((hm = hre.exec(hb[0]))) { history.push({ label: hm[1].trim(), time: hm[2].trim() }); }
+    }
+
+    /* 正文：段落还原成文字，图片视频换成 [图N]/[视频N] 标记（按出现顺序编号） */
+    var contentParts = [], media = [], seq = 0;
+    var region = html.match(/<\/h1>([\s\S]*?)<p class="end-mark">/);
+    if (region) {
+      var body = region[1].replace(/<p class="lead">[\s\S]*?<\/p>/, '');
+      var bre = /<p class="body-text">([\s\S]*?)<\/p>|<figure class="post-img"><img src="\.\.\/([^"]+)"[^>]*><\/figure>|<figure class="post-video"><video src="\.\.\/([^"]+)"[^>]*><\/video><\/figure>/g, bm;
+      while ((bm = bre.exec(body))) {
+        if (bm[1] !== undefined) {
+          var t = this.unesc(bm[1]).trim();
+          if (t) { contentParts.push(t); }
+        } else if (bm[2] !== undefined) {
+          seq++;
+          contentParts.push('[图' + seq + ']');
+          media.push({ marker: '图' + seq, path: bm[2], kind: 'image' });
+        } else {
+          seq++;
+          contentParts.push('[视频' + seq + ']');
+          media.push({ marker: '视频' + seq, path: bm[3], kind: 'video' });
+        }
+      }
+    }
+    return {
+      title: title, lead: lead, content: contentParts.join('\n\n'), tags: tags,
+      media: media, wroteAt: wroteAt, history: history,
+      editable: !!region
+    };
+  },
+
+  fetchPostForEdit: function (file) {
+    return this.get(file).then(function (g) {
+      var parsed = JD.parsePost(g.text);
+      parsed.file = file;
+      return parsed;
+    });
+  },
+
+  /* 正文块 → HTML（新发布与编辑共用） */
+  buildBodyBlocks: function (d) {
+    var mediaByMarker = {};
+    (d.images || []).forEach(function (img) { mediaByMarker[img.marker] = { path: img.path, kind: 'image' }; });
+    (d.videos || []).forEach(function (v) { mediaByMarker[v.marker] = { path: v.path, kind: 'video' }; });
+
+    var blocks = [];
+    d.content.split(/\n\s*\n/).forEach(function (raw) {
+      var b = raw.trim();
+      if (!b) { return; }
+      var m = b.match(/^\[(图|视频)\d+\]$/);
+      if (m && mediaByMarker[m[0].slice(1, -1)]) {
+        var md = mediaByMarker[m[0].slice(1, -1)];
+        if (md.kind === 'video') {
+          blocks.push('    <figure class="post-video"><video src="../' + md.path +
+            '" controls preload="metadata" playsinline></video></figure>');
+        } else {
+          blocks.push('    <figure class="post-img"><img src="../' + md.path +
+            '" alt="' + JD.esc(d.title) + '" loading="lazy"></figure>');
+        }
+      } else {
+        var txt = JD.esc(b).replace(/\[(图|视频)\d+\]/g, '');
+        if (txt) { blocks.push('    <p class="body-text">' + txt + '</p>'); }
+      }
+    });
+    return blocks.join('\n\n');
+  },
+
+  buildHistoryBlock: function (history) {
+    var lis = history.map(function (h) {
+      return '<li><i>' + JD.esc(h.label) + '</i>' + JD.esc(h.time) + '</li>';
+    });
+    return '<div class="edit-history">\n' +
+      '      <p class="eh-cap">✎ 编修留痕</p>\n' +
+      '      <ul>\n        ' + lis.join('\n        ') + '\n      </ul>\n    </div>';
+  },
+
+  /* 在原日记页上做外科手术式替换：标题 / 时间 / 标签 / 导语 / 正文 / 编辑历史 */
+  applyEditToPost: function (html, d, parsed) {
+    if (!parsed.editable) { throw new Error('这篇日记结构较老，缺少可识别的结尾标记，无法安全编辑'); }
+
+    html = html.replace(/<title>[\s\S]*?<\/title>/, function () {
+      return '<title>' + JD.esc(d.title) + ' · 就像戒不掉你</title>';
+    });
+
+    var chips = d.tags.map(function (t) {
+      return '<span class="chip chip-soft">#' + JD.esc(t) + '</span>';
+    }).join('\n      ');
+    html = html.replace(/<div class="article-meta">[\s\S]*?<\/div>/, function () {
+      return '<div class="article-meta">\n      <span class="date-stamp">' + d.wroteAt +
+        '</span>\n      ' + chips + '\n    </div>';
+    });
+
+    html = html.replace(/<h1>[\s\S]*?<\/h1>/, function () {
+      return '<h1>' + JD.esc(d.title) + '</h1>';
+    });
+
+    var lead = d.subtitle ? '\n    <p class="lead">' + this.esc(d.subtitle) + '</p>' : '';
+    var body = '\n\n' + this.buildBodyBlocks(d) + '\n\n    ';
+    html = html.replace(/(<\/h1>)[\s\S]*?(<p class="end-mark">)/, function (mm, a, b) {
+      return a + lead + body + b;
+    });
+
+    /* 编辑历史：第一次编辑的老日记自动补上「初稿」一栏 */
+    var history = parsed.history.slice();
+    if (!history.length) { history.push({ label: '初稿', time: parsed.wroteAt }); }
+    history.push({ label: '第 ' + history.length + ' 次编辑', time: d.wroteAt });
+    var block = this.buildHistoryBlock(history);
+    var timeLine = '初稿 ' + history[0].time + ' · 编辑于 ' + d.wroteAt;
+
+    if (/<p class="post-time">/.test(html)) {
+      html = html.replace(/<p class="post-time">[\s\S]*?<\/p>/, function () {
+        return '<p class="post-time">' + timeLine + '</p>';
+      });
+      if (/<div class="edit-history">/.test(html)) {
+        html = html.replace(/<div class="edit-history">[\s\S]*?<\/div>/, function () { return block; });
+      } else {
+        html = html.replace(/(<p class="post-time">[\s\S]*?<\/p>)/, function (mm, a) {
+          return a + '\n    ' + block;
+        });
+      }
+    } else {
+      /* 老日记没有时间行：补在结尾标记后面 */
+      html = html.replace(/(<p class="end-mark">[\s\S]*?<\/p>)/, function (mm, a) {
+        return a + '\n    <p class="post-time">' + timeLine + '</p>\n    ' + block;
+      });
+    }
+    return html;
+  },
+
+  /* 更新首页/日记页竹片卡：日期、标题、摘要、标签 */
+  _updateCardEdit: function (html, file, d) {
+    var re = new RegExp('(<a class="bamboo-strip[^"]*"[^>]*href="' + this._reEsc(file) + '"[^>]*>)([\\s\\S]*?)(</a>)');
+    var m = html.match(re);
+    if (!m) { return null; }
+
+    var firstPara = (d.content.split(/\n\s*\n/)[0] || '').trim().replace(/\[(图|视频)\d+\]/g, '');
+    var excerpt = d.subtitle || firstPara.slice(0, 60) || '一篇新日记';
+
+    var head = m[1].replace(/data-tags="[^"]*"/, 'data-tags="' + d.tags.join(',') + '"');
+    var body = m[2]
+      .replace(/(<span class="date-stamp">)[^<]*(<\/span>)/, function (x, a, b) { return a + d.wroteAt + b; })
+      .replace(/(<span class="bs-title">)[^<]*(<\/span>)/, function (x, a, b) { return a + JD.esc(d.title) + b; })
+      .replace(/(<b>)[^<]*(<\/b>)/, function (x, a, b) { return a + JD.esc(d.title) + b; })
+      .replace(/(<p>)[\s\S]*?(<\/p>)/, function (x, a, b) { return a + JD.esc(excerpt) + b; })
+      .replace(/<span class="chip chip-soft">#[^<]*<\/span>/, function () {
+        return '<span class="chip chip-soft">#' + JD.esc(d.tags[0]) + '</span>';
+      });
+    return html.replace(re, function () { return head + body + m[3]; });
+  },
+
+  /* 编辑一篇已发布的日记：时间更新为编辑时间，文末追加编辑历史 */
+  editPost: function (data) {
+    var self = this;
+    var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+    var now = new Date();
+    data.date = now.getFullYear() + '.' + pad(now.getMonth() + 1) + '.' + pad(now.getDate());
+    data.time = pad(now.getHours()) + ':' + pad(now.getMinutes());
+    data.wroteAt = data.date + ' ' + data.time;
+
+    return this.get(data.file).then(function (pf) {
+      var parsed = self.parsePost(pf.text);
+      var newHtml = self.applyEditToPost(pf.text, data, parsed);
+      return self.put(data.file, newHtml, '编辑日记：' + data.title)
+        .then(function () { return Promise.all([self.get('index.html'), self.get('blog.html')]); })
+        .then(function (fs) {
+          return Promise.all(fs.map(function (f, idx) {
+            var h = self._updateCardEdit(f.text, data.file, data);
+            if (h === null) { throw new Error((idx === 0 ? '首页' : '日记页') + '里找不到这篇日记的竹片'); }
+            (data.tags || []).forEach(function (t) { h = self.ensureTag(h, t); });
+            return self.put(idx === 0 ? 'index.html' : 'blog.html', h, '更新竹片：' + data.title);
+          }));
+        })
+        .then(function () {
+          /* 编辑时新插入的图片/视频也同步进相册；原有媒体不动 */
+          if (!(data.newMedia || []).length) { return null; }
+          return self.updateGallery(data.newMedia.map(function (m) {
+            return { src: m.path, type: m.kind, title: data.title, wroteAt: data.wroteAt, post: data.file };
+          }));
+        });
+    }).then(function () { return data; });
+  },
+
   /* ---------- 相册 ---------- */
 
   /* newItems: [{src, title, wroteAt, post}] 新照片插到最前 */
@@ -466,30 +677,7 @@ var JD = {
       return '<span class="chip chip-soft">#' + JD.esc(t) + '</span>';
     }).join('\n    ');
 
-    var mediaByMarker = {};
-    (d.images || []).forEach(function (img) { mediaByMarker[img.marker] = { path: img.path, kind: 'image' }; });
-    (d.videos || []).forEach(function (v) { mediaByMarker[v.marker] = { path: v.path, kind: 'video' }; });
-
-    var blocks = [];
-    d.content.split(/\n\s*\n/).forEach(function (raw) {
-      var b = raw.trim();
-      if (!b) { return; }
-      var m = b.match(/^\[(图|视频)\d+\]$/);
-      if (m && mediaByMarker[m[0].slice(1, -1)]) {
-        var md = mediaByMarker[m[0].slice(1, -1)];
-        if (md.kind === 'video') {
-          blocks.push('    <figure class="post-video"><video src="../' + md.path +
-            '" controls preload="metadata" playsinline></video></figure>');
-        } else {
-          blocks.push('    <figure class="post-img"><img src="../' + md.path +
-            '" alt="' + JD.esc(d.title) + '" loading="lazy"></figure>');
-        }
-      } else {
-        var txt = JD.esc(b).replace(/\[(图|视频)\d+\]/g, '');
-        if (txt) { blocks.push('    <p class="body-text">' + txt + '</p>'); }
-      }
-    });
-    var paras = blocks.join('\n\n');
+    var paras = this.buildBodyBlocks(d);
 
     var lead = d.subtitle ? '\n    <p class="lead">' + this.esc(d.subtitle) + '</p>' : '';
 

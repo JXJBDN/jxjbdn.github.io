@@ -37,8 +37,8 @@
 
     <section class="editor-hero">
       <div class="ed-date" id="edDate">——</div>
-      <h1>写一篇新日记</h1>
-      <p>落笔即成稿 · 发布后约 1 分钟线上生效</p>
+      <h1 id="edHeroTitle">写一篇新日记</h1>
+      <p id="edHeroSub">落笔即成稿 · 发布后约 1 分钟线上生效</p>
     </section>
 
     <!-- 首次使用：配置 GitHub 令牌 -->
@@ -104,9 +104,19 @@
 
         <div class="ed-actions">
           <button class="btn-publish btn-publish-lg" id="publishBtn">发布到网站</button>
+          <button type="button" class="btn-discard" id="cancelEditBtn" hidden>不改了，写新日记</button>
           <span class="draft-hint" id="draftHint">草稿会自动保存在本机</span>
         </div>
         <div class="edit-status" id="statusBox"></div>
+      </div>
+
+      <!-- 编辑已发布的日记 -->
+      <div class="tag-mgr-card">
+        <details>
+          <summary>编辑已发布的日记（改错字 · 随时改）</summary>
+          <p class="setup-tip">点「编辑」把日记装回上面的稿纸，改完点「保存修改」。保存后日记时间会更新为编辑时间，文末自动留下「编修留痕」，初稿和每次修改的时间都不会丢。图片视频会原样带回，不用重新上传。</p>
+          <div id="postEditList" class="tag-mgr-list"><span class="setup-tip">载入中……</span></div>
+        </details>
       </div>
 
       <!-- 标签管理：删除 / 排序 -->
@@ -173,6 +183,17 @@
   var contentInput = document.getElementById('contentInput');
   var wordCount = document.getElementById('wordCount');
   var draftHint = document.getElementById('draftHint');
+  var publishBtn = document.getElementById('publishBtn');
+  var cancelEditBtn = document.getElementById('cancelEditBtn');
+  var edHeroTitle = document.getElementById('edHeroTitle');
+  var edHeroSub = document.getElementById('edHeroSub');
+  var statusBox = document.getElementById('statusBox');
+  var paperSeal = document.querySelector('.paper-seal');
+
+  /* ---------- 编辑模式状态 ---------- */
+  var editingFile = '';      /* 正在编辑的日记文件名，空 = 写新日记 */
+  var editDirty = false;     /* 编辑模式下有没有改过东西 */
+  var editOrigTitle = '';
 
   /* 日期抬头 */
   (function () {
@@ -182,8 +203,10 @@
       d.getFullYear() + ' 年 ' + (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日 · 星期' + week;
   })();
 
-  /* 草稿：自动保存到本机，刷新不丢（图片不入草稿，标记会保留） */
+  /* 草稿：自动保存到本机，刷新不丢（图片不入草稿，标记会保留）；
+     编辑已有日记时不写草稿，免得覆盖正在写的新日记 */
   function saveDraft() {
+    if (editingFile) { return; }
     localStorage.setItem('jd_draft', JSON.stringify({
       t: titleInput.value, s: subtitleInput.value, c: contentInput.value
     }));
@@ -205,7 +228,13 @@
     wordCount.textContent = n + ' 字';
   }
   [titleInput, subtitleInput, contentInput].forEach(function (el) {
-    el.addEventListener('input', function () { updateCount(); saveDraft(); });
+    el.addEventListener('input', function () {
+      if (editingFile) { editDirty = true; }
+      updateCount(); saveDraft();
+    });
+  });
+  document.getElementById('newTagInput').addEventListener('input', function () {
+    if (editingFile) { editDirty = true; }
   });
 
   /* ---------- 图片插入 ---------- */
@@ -266,9 +295,11 @@
     pendingImages.forEach(function (p, i) {
       var d = document.createElement('div');
       d.className = 'img-thumb';
+      /* 编辑取回的已有文件直接用线上地址预览；新加的用本地数据预览 */
+      var src = p.b64 || p.path;
       var media = p.kind === 'video'
-        ? '<video src="' + p.b64 + '" muted preload="metadata"></video>'
-        : '<img src="' + p.b64 + '">';
+        ? '<video src="' + src + '" muted preload="metadata"></video>'
+        : '<img src="' + src + '">';
       d.innerHTML = media + '<button type="button" class="img-x" title="移除">×</button><span>' +
         (p.kind === 'video' ? '▶ [' + p.marker + ']' : '[' + p.marker + ']') + '</span>';
       d.querySelector('.img-x').addEventListener('click', function () {
@@ -314,7 +345,7 @@
           imgSeq++;
           var marker = (isVideo ? '视频' : '图') + imgSeq;
           insertAtCursor(contentInput, '\n\n[' + marker + ']\n\n');
-          pendingImages.push({ marker: marker, b64: r.b64, ext: r.ext, kind: isVideo ? 'video' : 'image' });
+          pendingImages.push({ marker: marker, b64: r.b64, ext: r.ext, kind: isVideo ? 'video' : 'image', existing: false });
           renderImgStrip();
           draftHint.textContent = '草稿会自动保存在本机';
         });
@@ -335,11 +366,12 @@
     loadTags();
     renderTagMgr();
     renderPostMgr();
+    renderPostEditList();
     renderLinks();
     renderAnn();
   }
 
-  function loadTags() {
+  function loadTags(checked) {
     JD.fetchTags().then(function (tags) {
       var box = document.getElementById('tagChecks');
       box.innerHTML = '';
@@ -349,9 +381,25 @@
         lab.innerHTML = '<input type="checkbox" value="' + JD.esc(t) + '"><span>' + JD.esc(t) + '</span>';
         lab.querySelector('input').addEventListener('change', function () {
           lab.classList.toggle('on', this.checked);
+          if (editingFile) { editDirty = true; }
         });
         box.appendChild(lab);
       });
+      /* 编辑日记：把这篇日记自己的标签勾上 */
+      if (checked) {
+        var missing = [];
+        checked.forEach(function (t) {
+          var hit = null;
+          box.querySelectorAll('input').forEach(function (i) {
+            if (i.value === t) { hit = i; }
+          });
+          if (hit) { hit.checked = true; hit.parentNode.classList.add('on'); }
+          else { missing.push(t); }
+        });
+        if (missing.length) {
+          document.getElementById('newTagInput').value = missing.join('，');
+        }
+      }
     }).catch(function (e) {
       document.getElementById('tagChecks').innerHTML =
         '<span class="setup-tip">标签同步失败：' + JD.esc(e.message) +
@@ -472,6 +520,120 @@
       box.innerHTML = '<span class="setup-tip">载入失败：' + JD.esc(e.message) + '</span>';
     });
   }
+
+  /* ---------- 编辑已发布的日记 ---------- */
+  function renderPostEditList() {
+    var box = document.getElementById('postEditList');
+    JD.listPosts().then(function (posts) {
+      box.innerHTML = '';
+      if (!posts.length) {
+        box.innerHTML = '<span class="setup-tip">还没有日记，先在上面写一篇吧</span>';
+        return;
+      }
+      posts.forEach(function (p) {
+        var row = document.createElement('div');
+        row.className = 'post-mgr-row';
+        row.innerHTML = '<div class="post-mgr-info"><b>' + JD.esc(p.title) + '</b>' +
+          '<span class="post-mgr-meta">' + JD.esc(p.date) + ' · ' +
+          (p.tags.length ? p.tags.map(function (t) { return '#' + JD.esc(t); }).join(' ') : '（无标签）') +
+          '</span></div><button type="button" class="mgr-edit-btn">编辑</button>';
+        row.querySelector('button').addEventListener('click', function () {
+          loadPostIntoEditor(p.file);
+        });
+        box.appendChild(row);
+      });
+    }).catch(function (e) {
+      box.innerHTML = '<span class="setup-tip">载入失败：' + JD.esc(e.message) + '</span>';
+    });
+  }
+
+  function loadPostIntoEditor(file) {
+    if (editingFile && file === editingFile) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    if (editingFile && editDirty &&
+        !confirm('正在编辑《' + editOrigTitle + '》，还没保存。\n换一篇会丢掉刚才的改动，确定？')) {
+      return;
+    }
+    statusBox.className = 'edit-status';
+    statusBox.textContent = '正在取回日记……';
+    JD.fetchPostForEdit(file).then(function (p) {
+      if (!p.editable) {
+        statusBox.textContent = '这篇日记是较早的结构，暂时没法自动编辑';
+        return;
+      }
+      editingFile = file;
+      editOrigTitle = p.title;
+      editDirty = false;
+
+      titleInput.value = p.title;
+      subtitleInput.value = p.lead;
+      contentInput.value = p.content;
+      document.getElementById('newTagInput').value = '';
+
+      /* 已有的图片视频原样带回：只做标记，不重新上传 */
+      pendingImages = p.media.map(function (md) {
+        return { marker: md.marker, b64: null, ext: '', kind: md.kind, path: md.path, existing: true };
+      });
+      imgSeq = p.media.length;
+      renderImgStrip();
+      updateCount();
+      loadTags(p.tags);
+
+      edHeroTitle.textContent = '修改这篇日记';
+      edHeroSub.textContent = '《' + p.title + '》 初稿 ' + p.wroteAt +
+        (p.history.length ? ' · 已改过 ' + p.history.length + ' 次' : '') + ' · 保存后时间更新';
+      paperSeal.textContent = '改';
+      publishBtn.textContent = '保存修改';
+      cancelEditBtn.hidden = false;
+      draftHint.textContent = '编辑模式：改动记得及时保存，刷新页面会退出';
+      statusBox.textContent = '';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }).catch(function (e) {
+      statusBox.textContent = '取回失败：' + e.message;
+    });
+  }
+
+  function exitEditMode(restoreDraftFlag) {
+    editingFile = '';
+    editOrigTitle = '';
+    editDirty = false;
+    pendingImages = [];
+    imgSeq = 0;
+    renderImgStrip();
+    titleInput.value = '';
+    subtitleInput.value = '';
+    contentInput.value = '';
+    document.getElementById('newTagInput').value = '';
+    document.querySelectorAll('#tagChecks input:checked').forEach(function (i) {
+      i.checked = false;
+      i.parentNode.classList.remove('on');
+    });
+    edHeroTitle.textContent = '写一篇新日记';
+    edHeroSub.textContent = '落笔即成稿 · 发布后约 1 分钟线上生效';
+    paperSeal.textContent = '稿';
+    publishBtn.textContent = '发布到网站';
+    cancelEditBtn.hidden = true;
+    draftHint.textContent = '草稿会自动保存在本机';
+    if (restoreDraftFlag) { restoreDraft(); }
+    updateCount();
+  }
+
+  cancelEditBtn.addEventListener('click', function () {
+    if (editDirty && !confirm('改动还没保存，确定放弃？')) { return; }
+    statusBox.className = 'edit-status';
+    statusBox.textContent = '';
+    exitEditMode(true);
+  });
+
+  /* 编辑到一半别让手滑关掉页面 */
+  window.addEventListener('beforeunload', function (e) {
+    if (editingFile && editDirty) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
 
   /* ---------- 友链管理 ---------- */
   function renderLinks() {
@@ -642,21 +804,22 @@
     btn.disabled = true;
     st.className = 'edit-status';
 
+    /* 只上传新加的文件；编辑取回的已有文件（带 path）直接复用 */
     function uploadMedia() {
       var pad = function (n) { return (n < 10 ? '0' : '') + n; };
       var d = new Date();
       var stamp = '' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) +
         '-' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
-      var images = [], videos = [];
+      var todo = pendingImages.filter(function (p) { return !p.path; });
       return new Promise(function (resolve, reject) {
         (function next(i) {
-          if (i >= pendingImages.length) { resolve({ images: images, videos: videos }); return; }
-          var p = pendingImages[i];
+          if (i >= todo.length) { resolve(); return; }
+          var p = todo[i];
           var dir = p.kind === 'video' ? 'videos' : 'images';
           var path = dir + '/' + stamp + '-' + (i + 1) + '.' + p.ext;
-          st.textContent = '正在上传文件 ' + (i + 1) + '/' + pendingImages.length + '……';
+          st.textContent = '正在上传文件 ' + (i + 1) + '/' + todo.length + '……';
           JD.put(path, p.b64, '上传文件：' + path, true).then(function () {
-            (p.kind === 'video' ? videos : images).push({ marker: p.marker, path: path });
+            p.path = path;
             next(i + 1);
           }).catch(reject);
         })(0);
@@ -664,14 +827,40 @@
     }
 
     uploadMedia()
-      .then(function (media) {
-        var n = media.images.length + media.videos.length;
+      .then(function () {
+        var images = [], videos = [], newMedia = [];
+        pendingImages.forEach(function (p) {
+          (p.kind === 'video' ? videos : images).push({ marker: p.marker, path: p.path });
+          if (!p.existing) { newMedia.push({ path: p.path, kind: p.kind }); }
+        });
+
+        /* 编辑已有日记：时间更新 + 文末追加编修留痕 */
+        if (editingFile) {
+          st.textContent = '正在保存修改……请别关闭页面';
+          return JD.editPost({
+            file: editingFile, title: title, subtitle: subtitle, content: content,
+            tags: tags, images: images, videos: videos, newMedia: newMedia
+          }).then(function (d) {
+            exitEditMode(true);
+            st.className = 'edit-status ed-done';
+            st.innerHTML = '修改已保存！<b>' + JD.esc(d.title) + '</b>（编辑于 ' + d.wroteAt +
+              '），文末「编修留痕」已记下这次修改。<br>' +
+              'GitHub Pages 需要约 1 分钟构建，之后：<a href="' + d.file +
+              '" target="_blank">查看这篇日记</a>（可能要按 Ctrl+F5 刷新）';
+            renderPostEditList();
+            renderPostMgr();
+            renderTagMgr();
+          });
+        }
+
+        var n = images.length + videos.length;
         st.textContent = n
           ? '文件上传完成，正在提交日记……'
           : '正在发布……会连续提交 3 个文件，请别关闭页面';
-        return JD.publishPost({ title: title, subtitle: subtitle, content: content, tags: tags, images: media.images, videos: media.videos });
+        return JD.publishPost({ title: title, subtitle: subtitle, content: content, tags: tags, images: images, videos: videos });
       })
       .then(function (d) {
+        if (!d || editingFile) { return; }
         localStorage.removeItem('jd_draft');
         draftHint.textContent = '草稿会自动保存在本机';
         pendingImages = [];
@@ -692,7 +881,7 @@
       })
       .catch(function (e) {
         st.className = 'edit-status';
-        st.textContent = '发布失败：' + e.message;
+        st.textContent = (editingFile ? '保存失败：' : '发布失败：') + e.message;
       })
       .then(function () { btn.disabled = false; });
   });
