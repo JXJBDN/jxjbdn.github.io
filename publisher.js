@@ -60,7 +60,7 @@ var JD = {
   },
 
   /* PUT：提交文件回仓库。isB64 时 content 传 dataURL（用于图片） */
-  put: function (path, content, message, isB64) {
+  put: function (path, content, message, isB64, retried) {
     var self = this;
     return this.get(path).then(function (g) { return g.sha; })
       .catch(function (e) { if (e.notFound) { return null; } throw e; })
@@ -74,8 +74,14 @@ var JD = {
           body: JSON.stringify(body)
         }).then(function (r) {
           if (!r.ok) {
-            return r.json().then(function (j) {
-              throw new Error('提交 ' + path + ' 失败：' + (j.message || r.status));
+            return r.json().catch(function () { return {}; }).then(function (j) {
+              /* 409 = 版本号过期（多半是两次保存撞车）：取最新版本号原样重试一次 */
+              if (r.status === 409 && !retried) {
+                return self.put(path, content, message, isB64, true);
+              }
+              var e = new Error('提交 ' + path + ' 失败：' + (j.message || r.status));
+              if (r.status === 409) { e.conflict = true; }
+              throw e;
             });
           }
           return r.json();
@@ -456,27 +462,62 @@ var JD = {
     return html.replace(re, function () { return head + body + m[3]; });
   },
 
+  /* ---------- 保存锁：防止两次保存撞车（409 冲突的根源） ---------- */
+  _saving: false,
+  _lockSave: function () {
+    /* 本页实例锁挡住「同页重复保存」，localStorage 锁挡住「另一个标签页」 */
+    if (this._saving) {
+      return Promise.reject(new Error('上一次保存还在进行中（网络慢时要十几秒），请再等一下'));
+    }
+    var t = 0;
+    try { t = +(localStorage.getItem('jd_saving') || 0); } catch (e) {}
+    if (t && Date.now() - t < 60000) {
+      return Promise.reject(new Error('另一个窗口正在保存（网络慢时要十几秒）；若等了一分钟还提示这个，刷新页面再试'));
+    }
+    try { localStorage.setItem('jd_saving', String(Date.now())); } catch (e) {}
+    this._saving = true;
+    return null;
+  },
+  _unlockSave: function () {
+    this._saving = false;
+    try { localStorage.removeItem('jd_saving'); } catch (e) {}
+  },
+
   /* 编辑一篇已发布的日记：时间更新为编辑时间，文末追加编辑历史 */
   editPost: function (data) {
     var self = this;
+    var lockErr = this._lockSave();
+    if (lockErr) { return lockErr; }
     var pad = function (n) { return (n < 10 ? '0' : '') + n; };
     var now = new Date();
     data.date = now.getFullYear() + '.' + pad(now.getMonth() + 1) + '.' + pad(now.getDate());
     data.time = pad(now.getHours()) + ':' + pad(now.getMinutes());
     data.wroteAt = data.date + ' ' + data.time;
 
-    return this.get(data.file).then(function (pf) {
+    var run = this.get(data.file).then(function (pf) {
       var parsed = self.parsePost(pf.text);
       var newHtml = self.applyEditToPost(pf.text, data, parsed);
       return self.put(data.file, newHtml, '编辑日记：' + data.title)
-        .then(function () { return Promise.all([self.get('index.html'), self.get('blog.html')]); })
-        .then(function (fs) {
-          return Promise.all(fs.map(function (f, idx) {
-            var h = self._updateCardEdit(f.text, data.file, data);
-            if (h === null) { throw new Error((idx === 0 ? '首页' : '日记页') + '里找不到这篇日记的竹片'); }
-            (data.tags || []).forEach(function (t) { h = self.ensureTag(h, t); });
-            return self.put(idx === 0 ? 'index.html' : 'blog.html', h, '更新竹片：' + data.title);
-          }));
+        .then(function () {
+          /* 两页竹片逐页更新；撞上别的提交（409）就重新取页面再试一次 */
+          var updatePage = function (path, label) {
+            var attempt = function (isRetry) {
+              return self.get(path).then(function (g) {
+                var h = self._updateCardEdit(g.text, data.file, data);
+                if (h === null) { throw new Error(label + '里找不到这篇日记的竹片'); }
+                (data.tags || []).forEach(function (t) { h = self.ensureTag(h, t); });
+                return self.put(path, h, '更新竹片：' + data.title);
+              }).catch(function (e) {
+                if (e.conflict && !isRetry) { return attempt(true); }
+                throw e;
+              });
+            };
+            return attempt(false);
+          };
+          return Promise.all([
+            updatePage('index.html', '首页'),
+            updatePage('blog.html', '日记页')
+          ]);
         })
         .then(function () {
           /* 编辑时新插入的图片/视频也同步进相册；原有媒体不动 */
@@ -486,6 +527,11 @@ var JD = {
           }));
         });
     }).then(function () { return data; });
+
+    return run.then(
+      function (v) { self._unlockSave(); return v; },
+      function (e) { self._unlockSave(); throw e; }
+    );
   },
 
   /* ---------- 相册 ---------- */
@@ -597,6 +643,8 @@ var JD = {
 
   publishPost: function (data) {
     var self = this;
+    var lockErr = this._lockSave();
+    if (lockErr) { return lockErr; }
     var pad = function (n) { return (n < 10 ? '0' : '') + n; };
     var now = new Date();
     data.date = now.getFullYear() + '.' + pad(now.getMonth() + 1) + '.' + pad(now.getDate());
@@ -605,7 +653,7 @@ var JD = {
 
     var blogText = '';
 
-    return this.get('blog.html').then(function (g) {
+    var run = this.get('blog.html').then(function (g) {
       blogText = g.text;
       var re = /post-(\d+)\.html/g, m, max = 1;
       while ((m = re.exec(blogText))) { max = Math.max(max, parseInt(m[1], 10)); }
@@ -643,6 +691,11 @@ var JD = {
           return self.updateGallery(galleryOps);
         });
     }).then(function () { return data; });
+
+    return run.then(
+      function (v) { self._unlockSave(); return v; },
+      function (e) { self._unlockSave(); throw e; }
+    );
   },
 
   ensureTag: function (html, tag) {
