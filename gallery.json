@@ -1,6 +1,20 @@
 {
   "items": [
     {
+      "src": "videos/20260918-203726-2.mp4",
+      "type": "video",
+      "title": "入职了但戒不掉好像更绝望了",
+      "wroteAt": "2026.09.18 20:37",
+      "post": "posts/post-15.html"
+    },
+    {
+      "src": "images/20260918-203726-1.jpg",
+      "type": "image",
+      "title": "入职了但戒不掉好像更绝望了",
+      "wroteAt": "2026.09.18 20:37",
+      "post": "posts/post-15.html"
+    },
+    {
       "src": "images/20260918-195952-6.jpg",
       "type": "image",
       "title": "做加强ct",
