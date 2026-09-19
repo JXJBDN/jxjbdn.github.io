@@ -1,6 +1,20 @@
 {
   "items": [
     {
+      "src": "images/20260919-195826-2.jpg",
+      "type": "image",
+      "title": "入职培训，加油。",
+      "wroteAt": "2026.09.19 19:58",
+      "post": "posts/post-16.html"
+    },
+    {
+      "src": "images/20260919-195826-1.jpg",
+      "type": "image",
+      "title": "入职培训，加油。",
+      "wroteAt": "2026.09.19 19:58",
+      "post": "posts/post-16.html"
+    },
+    {
       "src": "videos/20260918-203726-2.mp4",
       "type": "video",
       "title": "入职了但戒不掉好像更绝望了",
