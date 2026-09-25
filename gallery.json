@@ -1,6 +1,13 @@
 {
   "items": [
     {
+      "src": "images/20260925-121116-1.jpg",
+      "type": "image",
+      "title": "中秋节",
+      "wroteAt": "2026.09.25 12:11",
+      "post": "posts/post-19.html"
+    },
+    {
       "src": "images/20260925-111804-1.jpg",
       "type": "image",
       "title": "直面恐惧，我们一无所有。",
