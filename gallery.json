@@ -1,6 +1,13 @@
 {
   "items": [
     {
+      "src": "images/20260925-111804-1.jpg",
+      "type": "image",
+      "title": "直面恐惧，我们一无所有。",
+      "wroteAt": "2026.09.25 11:18",
+      "post": "posts/post-18.html"
+    },
+    {
       "src": "images/20260925-105217-2.jpg",
       "type": "image",
       "title": "欲望的假象终将破灭，而真相的痛击总是刺心。",
